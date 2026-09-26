@@ -20,21 +20,28 @@ new email ──> AI reads it ──> JSON: origin, destination, equipment, weig
                                         missing details: polite questions in the same draft
 ```
 
-![Incoming emails and the drafts created for them](docs/preview.png)
+![Gmail: inbox with labels, then two drafts opened](docs/gmail-flow.gif)
 
-The harder cases: two lanes in one email, a lane with only similar history,
-an invoice that must be skipped, and a request full of typos.
+A live run in a test Gmail account on 26.09.2026: 10 test emails in, 9 drafts
+saved in their own threads with the label `Quote ready`, the invoice labelled
+`Not a quote`. Nothing was sent.
 
-![Two lanes, similar lanes, not a quote, typos](docs/preview-hard.png)
+![Inbox after the run](docs/gmail-inbox.png)
 
-These pictures are rendered locally from the real model answers
-(`node scripts/preview.js`), not taken in Gmail.
+Two lanes in one email: a rate for the lane with history, a `[RATE]` note for the
+lane without it.
+
+![Draft for two lanes](docs/gmail-draft-two-lanes.png)
+
+All 10 emails side by side, rendered locally from the recorded model answers
+(`node scripts/preview.js`): [`docs/preview.png`](docs/preview.png),
+[`docs/preview-hard.png`](docs/preview-hard.png).
 
 ## What is verified, and how
 
 | Claim | How | Result |
 |---|---|---|
-| The model reads all 10 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **10/10** on `gemini-2.5-flash` — [`docs/live-eval.txt`](docs/live-eval.txt); also 10/10 on `gemini-3.8-flash` in an earlier run |
+| The model reads all 10 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **10/10** on each of `gemini-2.5-flash`, `gemini-flash-latest` (3.8-flash) and `gemini-flash-lite-latest` (3.5-flash-lite) — [`docs/live-eval.txt`](docs/live-eval.txt) |
 | Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 20 tests |
 | Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 9 tests |
 | A second run does not create duplicate drafts or call the model again | same | test |
@@ -48,9 +55,19 @@ These pictures are rendered locally from the real model answers
 npm test          # 29 tests, no network, no Google account
 ```
 
-Not verified yet: the run inside a real Gmail account. The Gmail and Sheets
-calls are standard Apps Script services, but until they run in a live account
-they are covered only by the fakes above.
+**Live run in Gmail (26.09.2026).** A new Gmail account, the three `.gs` files
+pasted into a sheet's script, **Setup**, **Load demo emails**, then the
+5-minute trigger. Result: 9 drafts, each in its own thread, `Quote ready` on
+each, the invoice and two Google notices labelled `Not a quote`. The Sent folder
+holds one message: the broker's earlier question from test email 8, put there by
+the demo loader, not sent. Running **Check inbox now** again right after created nothing new.
+
+What the live run found that the tests did not:
+- `gemini-2.5-flash` answers 404 to a new API key ("no longer available to new
+  users"). The default model is now `gemini-flash-latest`.
+- The free tier answered 503 ("high demand") and 429 (daily limit) during the
+  run. The script used to count these as failed attempts and give up on an email
+  after 3; now a service error stops the run and the email waits for the next one.
 
 ## The 10 test emails
 
@@ -96,7 +113,13 @@ what you send it to improve Google's products.
 The free tier also has a small daily limit: on 26.09.2026 it was 20 requests per
 day per model (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`). One email is
 one request, so a demo run of 10 emails can be repeated about once a day. The
-model is set in the **Settings** sheet.
+model is set in the **Settings** sheet; each model has its own limit, so switching
+to `gemini-flash-lite-latest` gives another 20. `gemini-2.5-flash` is closed to new
+API keys ("no longer available to new users", seen 26.09.2026).
+
+When the AI service is busy (HTTP 503) or out of quota (429), the run stops after
+that one call and the email is tried again 5 minutes later. Such failures never
+count toward the 3 attempts; only an answer the script cannot read does.
 
 ## How it is built
 

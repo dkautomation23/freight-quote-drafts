@@ -29,6 +29,7 @@ function world(emails, recordedFor) {
   const triggers = [];
   const calls = { model: 0 };
   let failModelFor = null;
+  let garbageFor = null;
   let failLabel = false;
   let msgSeq = 0;
 
@@ -89,10 +90,11 @@ function world(emails, recordedFor) {
       fetch: (url, opts) => {
         calls.model++;
         assert.strictEqual(opts.headers['x-goog-api-key'], 'test-key');
-        assert.ok(url.includes('gemini-2.5-flash:generateContent'));
+        assert.ok(url.includes('gemini-flash-latest:generateContent'));
         const prompt = JSON.parse(opts.payload).contents[0].parts[0].text;
         const email = emails.find((e) => prompt.includes(e.messages[0].body.slice(0, 30)));
         if (email.id === failModelFor) return { getResponseCode: () => 503, getContentText: () => 'overloaded' };
+        if (email.id === garbageFor) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sorry, I cannot help' }] } }] }) };
         const text = recordedFor(email.id);
         return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) };
       }
@@ -102,6 +104,7 @@ function world(emails, recordedFor) {
   return {
     gas: loadGas(globals), threads, sheets, labels, props, triggers, calls,
     failModel: (id) => { failModelFor = id; },
+    garbage: (id) => { garbageFor = id; },
     failLabels: (on) => { failLabel = on; },
     addMessage: (threadId, m) => { const t = threads.find((x) => x.id === threadId); t.messages.push(makeMessage(t, m)); },
     log: () => sheets.Log.rows.slice(1)
@@ -210,11 +213,21 @@ test('label fails after the draft was made: logged, and no second draft next run
   assert.match(row[8], /label service busy/);
 });
 
-test('model keeps failing: 3 attempts, then the email is left for a person', () => {
+test('model cannot read an email: 3 attempts, then it is left for a person', () => {
   const w = freshWorld();
-  w.failModel('01-full');
+  w.garbage('01-full');
   for (let i = 0; i < 5; i++) w.gas.processInbox();
   const errors = w.log().filter((r) => r[4] === 'error');
   assert.strictEqual(errors.length, 3);
   assert.strictEqual(w.threads.find((x) => x.id === '01-full').drafts.length, 0);
+});
+
+test('AI service busy: the run stops after one call, and it never counts as an attempt', () => {
+  const w = freshWorld();
+  w.failModel('01-full'); // the oldest email, so it is the first call of every run
+  for (let i = 0; i < 5; i++) w.gas.processInbox();
+  assert.strictEqual(w.calls.model, 5, 'one call per run while the service is down');
+  w.failModel(null);
+  w.gas.processInbox();
+  assert.strictEqual(w.threads.find((x) => x.id === '01-full').drafts.length, 1, 'still retried after 5 failures');
 });

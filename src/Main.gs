@@ -7,7 +7,7 @@ var SHEET_LOG = 'Log';
 var SHEET_SETTINGS = 'Settings';
 var LOG_HEADERS = ['Time', 'Message ID', 'From', 'Subject', 'Result', 'Lanes', 'Rates', 'Missing', 'Error'];
 var THREADS_TO_SCAN = 100;    // already handled threads are cheap: no model call
-var MAX_ATTEMPTS = 3;          // a failing email is retried on the next 2 runs, then left for a person
+var MAX_ATTEMPTS = 3;          // an email the AI cannot read is retried twice, then left for a person
 var MAX_MODEL_CALLS_PER_RUN = 20; // with the 7 s pause, well inside the 6-minute Apps Script limit
 
 function onOpen() {
@@ -26,7 +26,7 @@ function setup() {
   ensureSheet(ss, SHEET_SETTINGS, ['Setting', 'Value'], [
     ['Your name', DEMO_BROKER],
     ['Company name', DEMO_COMPANY],
-    ['Model', 'gemini-2.5-flash']
+    ['Model', 'gemini-flash-latest']
   ]);
   GmailApp.getUserLabelByName(LABEL_READY) || GmailApp.createLabel(LABEL_READY);
   GmailApp.getUserLabelByName(LABEL_SKIPPED) || GmailApp.createLabel(LABEL_SKIPPED);
@@ -58,7 +58,7 @@ function ensureSheet(ss, name, headers, rows) {
 }
 
 function readSettings(ss) {
-  var out = { signerName: '', companyName: '', model: 'gemini-2.5-flash' };
+  var out = { signerName: '', companyName: '', model: 'gemini-flash-latest' };
   var sh = ss.getSheetByName(SHEET_SETTINGS);
   if (!sh) return out;
   sh.getDataRange().getValues().slice(1).forEach(function (r) {
@@ -89,6 +89,11 @@ function callModel(prompt, model) {
   return parts.map(function (p) { return p.text || ''; }).join('');
 }
 
+// HTTP errors from the AI (busy, quota, model retired) are about the service, not the email.
+function isServiceError(message) {
+  return /^model http /.test(String(message || ''));
+}
+
 function toPlainMessages(gmailMessages, myEmail) {
   return gmailMessages.map(function (m) {
     return {
@@ -111,6 +116,7 @@ function processInbox() {
     var done = {}, errors = {};
     logSheet.getDataRange().getValues().slice(1).forEach(function (r) {
       if (r[4] !== 'error') done[r[1]] = true;
+      else if (isServiceError(r[8])) return; // the AI service was down or busy: not this email's fault, retry
       else if ((errors[r[1]] = (errors[r[1]] || 0) + 1) >= MAX_ATTEMPTS) done[r[1]] = true; // give up, stays in Log
     });
     var myEmail = Session.getEffectiveUser().getEmail().toLowerCase();
@@ -118,9 +124,9 @@ function processInbox() {
     var skipped = GmailApp.getUserLabelByName(LABEL_SKIPPED) || GmailApp.createLabel(LABEL_SKIPPED);
 
     var threads = GmailApp.search('in:inbox newer_than:2d', 0, THREADS_TO_SCAN).reverse(); // oldest first
-    var modelCalls = 0;
+    var modelCalls = 0, serviceDown = false;
     threads.forEach(function (thread) {
-      if (modelCalls >= MAX_MODEL_CALLS_PER_RUN) return; // the rest wait for the next run
+      if (serviceDown || modelCalls >= MAX_MODEL_CALLS_PER_RUN) return; // the rest wait for the next run
       var msgs = thread.getMessages().filter(function (m) { return !m.isDraft(); });
       var last = msgs[msgs.length - 1];
       if (!last || done[last.getId()]) return;
@@ -147,6 +153,7 @@ function processInbox() {
       } catch (e) {
         if (row[4] !== 'draft') row[4] = 'error';
         row[8] = String(e.message || e).slice(0, 300);
+        if (isServiceError(row[8])) serviceDown = true; // one failed call per run, not twenty
       }
       logSheet.appendRow(row);
       done[last.getId()] = true;

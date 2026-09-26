@@ -8,7 +8,7 @@ const expected = require('../test/expected.js');
 
 const key = process.env.GEMINI_API_KEY;
 if (!key) { console.error('Set GEMINI_API_KEY'); process.exit(2); }
-const model = process.argv[2] || 'gemini-2.5-flash';
+const model = process.argv[2] || 'gemini-flash-latest';
 const gas = loadGas();
 const rows = gas.rateRowsFromTable(gas.DEMO_RATES);
 const seenVersions = new Set();
