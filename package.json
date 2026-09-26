@@ -1,0 +1,8 @@
+{
+  "name": "freight-quote-drafts",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "live": "node scripts/live-eval.js"
+  }
+}

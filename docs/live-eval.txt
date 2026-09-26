@@ -1,0 +1,12 @@
+ok   01-full
+ok   02-no-weight
+ok   03-no-date
+ok   04-two-lanes
+ok   05-reefer
+ok   06-flatbed
+ok   07-not-a-quote
+ok   08-reply-in-thread
+ok   09-signature-phone
+ok   10-typos
+
+10/10 match (model gemini-2.5-flash -> gemini-2.5-flash, 2026-09-26)
