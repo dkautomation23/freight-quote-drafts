@@ -5,7 +5,8 @@ rate requests in a shared inbox (quotes@, info@), pulls out the lane details
 with an AI model, looks up what the broker charged on that lane before, and
 saves a **draft reply in the same Gmail thread** with the label `Quote ready`.
 
-It never sends anything. A person opens the draft, checks it, and presses Send.
+It never sends anything. A person always opens the draft, checks it, fills in any
+`[RATE: ...]` note, and presses Send.
 
 ```
 new email ──> AI reads it ──> JSON: origin, destination, equipment, weight, pickup date
