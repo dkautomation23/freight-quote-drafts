@@ -7,6 +7,8 @@ var SHEET_LOG = 'Log';
 var SHEET_SETTINGS = 'Settings';
 var LOG_HEADERS = ['Time', 'Message ID', 'From', 'Subject', 'Result', 'Lanes', 'Rates', 'Missing', 'Error'];
 var THREADS_TO_SCAN = 100;    // already handled threads are cheap: no model call
+// Set when quote-proxy is deployed. With a Client token in Settings, AI calls go here instead of Gemini.
+var PROXY_URL = '';
 var MAX_ATTEMPTS = 3;          // an email the AI cannot read is retried twice, then left for a person
 var MAX_MODEL_CALLS_PER_RUN = 20; // with the 7 s pause, well inside the 6-minute Apps Script limit
 
@@ -26,13 +28,14 @@ function setup() {
   ensureSheet(ss, SHEET_SETTINGS, ['Setting', 'Value'], [
     ['Your name', DEMO_BROKER],
     ['Company name', DEMO_COMPANY],
-    ['Model', 'gemini-flash-latest']
+    ['Model', 'gemini-flash-latest'],
+    ['Client token', '']
   ]);
   GmailApp.getUserLabelByName(LABEL_READY) || GmailApp.createLabel(LABEL_READY);
   GmailApp.getUserLabelByName(LABEL_SKIPPED) || GmailApp.createLabel(LABEL_SKIPPED);
 
   var props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('GEMINI_API_KEY')) {
+  if (!readSettings(ss).clientToken && !props.getProperty('GEMINI_API_KEY')) {
     var ui = SpreadsheetApp.getUi();
     var res = ui.prompt('Quote Assistant', 'Paste your Gemini API key (kept in this script\'s properties, not in the sheet):', ui.ButtonSet.OK_CANCEL);
     if (res.getSelectedButton() === ui.Button.OK && res.getResponseText().trim()) {
@@ -58,19 +61,23 @@ function ensureSheet(ss, name, headers, rows) {
 }
 
 function readSettings(ss) {
-  var out = { signerName: '', companyName: '', model: 'gemini-flash-latest' };
+  var out = { signerName: '', companyName: '', model: 'gemini-flash-latest', clientToken: '' };
   var sh = ss.getSheetByName(SHEET_SETTINGS);
   if (!sh) return out;
   sh.getDataRange().getValues().slice(1).forEach(function (r) {
     if (r[0] === 'Your name') out.signerName = String(r[1]);
     if (r[0] === 'Company name') out.companyName = String(r[1]);
     if (r[0] === 'Model' && r[1]) out.model = String(r[1]);
+    if (r[0] === 'Client token') out.clientToken = String(r[1]).trim();
   });
   return out;
 }
 
-// The only function that talks to the AI. Swap the body for a proxy or the Claude API later.
-function callModel(prompt, model) {
+// The only function that talks to the AI: through quote-proxy when the sheet has a client token
+// (the paid setup, the AI key stays on the proxy), otherwise straight to Gemini (the demo).
+function callModel(prompt, settings) {
+  if (settings.clientToken) return callProxy(prompt, settings.clientToken);
+  var model = settings.model;
   var key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!key) throw new Error('No Gemini API key: run Quote Assistant > Setup');
   var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
@@ -92,6 +99,23 @@ function callModel(prompt, model) {
 // HTTP errors from the AI (busy, quota, model retired) are about the service, not the email.
 function isServiceError(message) {
   return /^model http /.test(String(message || ''));
+}
+
+// Errors keep the "model http" prefix so a paused client or a busy AI stops the run and retries later;
+// the proxy's message ("service paused - contact Dmytro") lands in the Log as is.
+function callProxy(prompt, token) {
+  if (!PROXY_URL) throw new Error('model http 0: PROXY_URL is not set in the script');
+  var res = UrlFetchApp.fetch(PROXY_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-client-token': token },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ prompt: prompt })
+  });
+  var body = {};
+  try { body = JSON.parse(res.getContentText()); } catch (e) { body = {}; }
+  if (res.getResponseCode() !== 200) throw new Error('model http ' + res.getResponseCode() + ': ' + (body.error || 'proxy error'));
+  return String(body.text || '');
 }
 
 function toPlainMessages(gmailMessages, myEmail) {
@@ -136,7 +160,7 @@ function processInbox() {
       var row = [new Date(), last.getId(), last.getFrom(), thread.getFirstMessageSubject(), '', '', '', '', ''];
       try {
         modelCalls++;
-        var modelText = callModel(buildPrompt(plain), settings.model);
+        var modelText = callModel(buildPrompt(plain), settings);
         Utilities.sleep(7000); // stay under the free Gemini tier's per-minute limit
         var plan = planReply(plain, modelText, rateRows, settings);
         if (plan.action === 'skip') {

@@ -2,7 +2,7 @@
   "name": "freight-quote-drafts",
   "private": true,
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node --test test/*.test.js proxy/test/*.test.mjs",
     "live": "node scripts/live-eval.js"
   }
 }

@@ -43,16 +43,16 @@ All 10 emails side by side, rendered locally from the recorded model answers
 |---|---|---|
 | The model reads all 10 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **10/10** on each of `gemini-2.5-flash`, `gemini-flash-latest` (3.8-flash) and `gemini-flash-lite-latest` (3.5-flash-lite) — [`docs/live-eval.txt`](docs/live-eval.txt) |
 | Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 20 tests |
-| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 9 tests |
+| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 12 tests |
 | A second run does not create duplicate drafts or call the model again | same | test |
-| Model down (HTTP 503) → no label, logged, retried 5 minutes later; after 3 failures left for a person | same | 2 tests |
+| Model down (HTTP 503) → no label, logged, retried 5 minutes later; an answer the script cannot read → 3 attempts, then left for a person | same | 3 tests |
 | Label fails after the draft is saved → still no second draft | same | test |
 | Customer writes again in a thread that already has a draft → a new draft | same | test |
 | Busy inbox: 27 requests at once → 20 in the first run (oldest first), 7 in the next | same | test |
 | The tests catch real mistakes | broke the equipment check, the "we wrote last" check and the duplicate-draft guard on purpose | each made tests fail |
 
 ```bash
-npm test          # 29 tests, no network, no Google account
+npm test          # 44 tests, no network, no Google account
 ```
 
 **Live run in Gmail (26.09.2026).** A new Gmail account, the three `.gs` files
@@ -127,6 +127,56 @@ count toward the 3 attempts; only an answer the script cannot read does.
 - `src/Main.gs` — menu, setup, the 5-minute trigger, Gmail and Sheets.
 - `callModel()` in `Main.gs` is the only place that talks to the AI. To move to a proxy or another provider, change that one function.
 - `test/gas.js` loads the `.gs` files into one shared scope, the way Apps Script does.
+
+## quote-proxy: the paid setup
+
+In the demo the sheet calls Gemini with its own key. For a paying broker the sheet
+holds only a **client token**; `callModel()` sends the prompt to `quote-proxy`, a
+Cloudflare Worker ([`proxy/`](proxy)) that holds the AI key and decides whether to
+answer.
+
+```
+sheet (Client token) ──{prompt}──> quote-proxy ──> Gemini or Claude
+                                     │ unknown token        → 401
+                                     │ paused by me         → 403 "service paused - contact Dmytro"
+                                     │ paid_until passed    → 402 same message
+                                     │ client's daily limit → 429 same message
+                                     │ all clients' limit   → 503 same message
+```
+
+The sheet treats every refusal like a busy AI: no draft, the message goes to the
+**Log** sheet, the email is tried again on the next run.
+
+- The AI key is a Worker secret (`wrangler secret put AI_KEY`). Clients never see it.
+- KV keeps token hashes, client settings and daily counters. Email text is never
+  logged or stored: a test sends a marked prompt through success, provider failure
+  and a bad token, and fails if the marker shows up in console output, KV or any reply.
+- `PROVIDER = "gemini"` (free, tests) or `"anthropic"` (`claude-haiku-4-5`), one variable.
+- Clients are managed from the command line, no web page:
+
+```bash
+node proxy/admin.js add "Acme Freight" 200 2026-10-31   # prints the token once
+node proxy/admin.js pause "Acme Freight"
+node proxy/admin.js list
+node proxy/admin.js push                                # prints the upload command
+```
+
+**What a runaway client can cost.** Measured on the 10 test emails: the prompt is
+about 1,700 characters (roughly 450 tokens), the answer up to 560 characters
+(roughly 150 tokens). At Claude Haiku 4.5 prices ($1 per million input tokens,
+$5 per million output) that is about $0.0013 per email; a long thread (4 messages of
+4,000 characters, the most the script sends) is about $0.005. With a limit of 200
+emails a day, one client costs at most about $1 a day, usually about $0.25; the
+global limit (1,000 a day by default) caps all clients together at about $5 a day.
+
+Before switching `PROVIDER` to `anthropic`: set a monthly spend limit in the
+Anthropic Console and keep auto-reload off, so a bug can stop the service but cannot
+run up a bill.
+
+Checked locally: 12 proxy tests (every guard also broken on purpose to see its test
+fail) and one real Gemini call through the Worker code. Not yet deployed to
+Cloudflare; the KV counters are not atomic, so two requests in the same instant can
+both pass the last free slot.
 
 ## What the AI sees
 

@@ -30,6 +30,7 @@ function world(emails, recordedFor) {
   const calls = { model: 0 };
   let failModelFor = null;
   let garbageFor = null;
+  let proxy = null;
   let failLabel = false;
   let msgSeq = 0;
 
@@ -89,6 +90,7 @@ function world(emails, recordedFor) {
     UrlFetchApp: {
       fetch: (url, opts) => {
         calls.model++;
+        if (proxy) return proxy(url, opts);
         assert.strictEqual(opts.headers['x-goog-api-key'], 'test-key');
         assert.ok(url.includes('gemini-flash-latest:generateContent'));
         const prompt = JSON.parse(opts.payload).contents[0].parts[0].text;
@@ -105,6 +107,7 @@ function world(emails, recordedFor) {
     gas: loadGas(globals), threads, sheets, labels, props, triggers, calls,
     failModel: (id) => { failModelFor = id; },
     garbage: (id) => { garbageFor = id; },
+    useProxy: (fn) => { proxy = fn; },
     failLabels: (on) => { failLabel = on; },
     addMessage: (threadId, m) => { const t = threads.find((x) => x.id === threadId); t.messages.push(makeMessage(t, m)); },
     log: () => sheets.Log.rows.slice(1)
@@ -230,4 +233,32 @@ test('AI service busy: the run stops after one call, and it never counts as an a
   w.failModel(null);
   w.gas.processInbox();
   assert.strictEqual(w.threads.find((x) => x.id === '01-full').drafts.length, 1, 'still retried after 5 failures');
+});
+
+test('client token set: calls go to the proxy with the token, never to Gemini', () => {
+  const w = freshWorld();
+  w.gas.PROXY_URL = 'https://quote-proxy.test/';
+  w.sheets.Settings.rows.find((r) => r[0] === 'Client token')[1] = 'qa_client_token';
+  const seen = [];
+  w.useProxy((url, opts) => {
+    seen.push({ url, token: opts.headers['x-client-token'], body: JSON.parse(opts.payload) });
+    const id = loadGas().DEMO_EMAILS.find((e) => seen[seen.length - 1].body.prompt.includes(e.messages[0].body.slice(0, 30))).id;
+    return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ text: recorded(id) }) };
+  });
+  w.gas.processInbox();
+  assert.strictEqual(seen.length, 10);
+  assert.ok(seen.every((c) => c.url === 'https://quote-proxy.test/' && c.token === 'qa_client_token'));
+  assert.ok(seen.every((c) => Object.keys(c.body).join() === 'prompt'), 'only the prompt is sent');
+  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 9);
+});
+
+test('proxy says the client is paused: no drafts, the reason in the Log, retried later', () => {
+  const w = freshWorld();
+  w.gas.PROXY_URL = 'https://quote-proxy.test/';
+  w.sheets.Settings.rows.find((r) => r[0] === 'Client token')[1] = 'qa_client_token';
+  w.useProxy(() => ({ getResponseCode: () => 402, getContentText: () => JSON.stringify({ error: 'service paused - contact Dmytro' }) }));
+  w.gas.processInbox();
+  assert.strictEqual(w.calls.model, 1, 'the run stops after the first refusal');
+  assert.ok(w.threads.every((t) => t.drafts.length === 0));
+  assert.match(w.log()[0][8], /402: service paused - contact Dmytro/);
 });
