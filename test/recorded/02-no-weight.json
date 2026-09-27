@@ -1,15 +1,1 @@
-{
-  "is_quote_request": true,
-  "lanes": [
-    {
-      "origin_city": "Houston",
-      "origin_state": "TX",
-      "destination_city": "Memphis",
-      "destination_state": "TN",
-      "equipment": "dry van",
-      "weight_lbs": null,
-      "pickup_date": "2026-09-28",
-      "notes": ""
-    }
-  ]
-}
+{"is_quote_request": true, "lanes": [{"origin_city": "Houston", "origin_state": "TX", "destination_city": "Memphis", "destination_state": "TN", "equipment": "dry van", "weight_lbs": null, "pickup_date": "2026-09-28", "notes": ""}]}

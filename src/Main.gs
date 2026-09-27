@@ -8,7 +8,8 @@ var SHEET_SETTINGS = 'Settings';
 var LOG_HEADERS = ['Time', 'Message ID', 'From', 'Subject', 'Result', 'Lanes', 'Rates', 'Missing', 'Error'];
 var THREADS_TO_SCAN = 100;    // already handled threads are cheap: no model call
 // Set when quote-proxy is deployed. With a Client token in Settings, AI calls go here instead of Gemini.
-var PROXY_URL = '';
+var PROXY_URL = 'https://quote-proxy.dkautomation.workers.dev/';
+var LOG_ROWS_TO_READ = 3000; // the inbox search covers 2 days, so older Log rows never matter for de-duplication
 var MAX_ATTEMPTS = 3;          // an email the AI cannot read is retried twice, then left for a person
 var MAX_MODEL_CALLS_PER_RUN = 20; // with the 7 s pause, well inside the 6-minute Apps Script limit
 
@@ -138,7 +139,10 @@ function processInbox() {
     var rateRows = rateRowsFromTable(ss.getSheetByName(SHEET_RATES).getDataRange().getValues().slice(1));
     var logSheet = ss.getSheetByName(SHEET_LOG);
     var done = {}, errors = {};
-    logSheet.getDataRange().getValues().slice(1).forEach(function (r) {
+    var lastRow = logSheet.getLastRow();
+    var firstRow = Math.max(2, lastRow - LOG_ROWS_TO_READ + 1);
+    var logRows = lastRow >= 2 ? logSheet.getRange(firstRow, 1, lastRow - firstRow + 1, LOG_HEADERS.length).getValues() : [];
+    logRows.forEach(function (r) {
       if (r[4] !== 'error') done[r[1]] = true;
       else if (isServiceError(r[8])) return; // the AI service was down or busy: not this email's fault, retry
       else if ((errors[r[1]] = (errors[r[1]] || 0) + 1) >= MAX_ATTEMPTS) done[r[1]] = true; // give up, stays in Log
@@ -160,7 +164,7 @@ function processInbox() {
       var row = [new Date(), last.getId(), last.getFrom(), thread.getFirstMessageSubject(), '', '', '', '', ''];
       try {
         modelCalls++;
-        var modelText = callModel(buildPrompt(plain), settings);
+        var modelText = callModel(buildPrompt(plain, thread.getFirstMessageSubject()), settings);
         Utilities.sleep(7000); // stay under the free Gemini tier's per-minute limit
         var plan = planReply(plain, modelText, rateRows, settings);
         if (plan.action === 'skip') {

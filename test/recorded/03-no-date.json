@@ -1,15 +1,1 @@
-{
-  "is_quote_request": true,
-  "lanes": [
-    {
-      "origin_city": "Chicago",
-      "origin_state": "IL",
-      "destination_city": "Columbus",
-      "destination_state": "OH",
-      "equipment": "dry van",
-      "weight_lbs": 42000,
-      "pickup_date": null,
-      "notes": ""
-    }
-  ]
-}
+{"is_quote_request": true, "lanes": [{"origin_city": "Chicago", "origin_state": "IL", "destination_city": "Columbus", "destination_state": "OH", "equipment": "dry van", "weight_lbs": 42000, "pickup_date": null, "notes": ""}]}

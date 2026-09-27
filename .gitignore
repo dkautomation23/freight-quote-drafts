@@ -5,3 +5,4 @@ node_modules/
 proxy/clients.local.json
 proxy/.wrangler/
 proxy/.dev.vars
+proxy/test-client-token.local.txt

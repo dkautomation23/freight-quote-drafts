@@ -25,8 +25,8 @@ function stripQuoted(body) {
   return out.join('\n').trim();
 }
 
-// messages: [{from, date (ISO), body, isMine}], oldest first.
-function buildPrompt(messages) {
+// messages: [{from, date (ISO), body, isMine}], oldest first. Customers often put the whole request in the subject.
+function buildPrompt(messages, subject) {
   var recent = messages.slice(-4);
   var last = recent[recent.length - 1];
   var d = new Date(last.date);
@@ -43,7 +43,7 @@ function buildPrompt(messages) {
     '- is_quote_request is true only if the customer asks for a price/rate/quote to move freight.',
     '  Invoices, payment questions, newsletters, carrier offers and job applications are false.',
     '- One lane per origin/destination pair. An email can ask for several lanes.',
-    '- Read the whole thread: later customer messages add or correct details of earlier ones.',
+    '- Read the subject and the whole thread: later customer messages add or correct details of earlier ones.',
     '- Fix misspelled US city names. States as 2-letter codes (TX, GA).',
     '- equipment: "dry van", "reefer" or "flatbed". "53 ft van" or "van" is "dry van". Temperature-controlled is "reefer".',
     '- weight_lbs: a number. "44k" = 44000. Tons are US tons (2000 lbs).',
@@ -58,6 +58,7 @@ function buildPrompt(messages) {
     ' "destination_city": "Atlanta", "destination_state": "GA", "equipment": "dry van",',
     ' "weight_lbs": 40000, "pickup_date": "2026-09-25", "notes": ""}]}',
     '',
+    'Subject: ' + String(subject || '').slice(0, 300),
     'Thread (oldest first):',
     thread
   ].join('\n');
@@ -215,7 +216,7 @@ function composeReply(customerFrom, items, settings) {
 }
 
 // One call per thread: model text in, everything the Gmail side needs out.
-function planReply(messages, modelText, rateRows, settings) {
+function planReply(messages, modelText, rateRows, settings) { // modelText from callModel(buildPrompt(messages, subject))
   var parsed = parseModelOutput(modelText);
   if (!parsed.isQuote) return { action: 'skip', lanes: [] };
   var items = parsed.lanes.map(function (lane) { return { lane: lane, quote: findRate(lane, rateRows) }; });

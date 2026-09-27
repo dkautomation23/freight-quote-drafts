@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Client list for quote-proxy. Edits a local JSON file; `push` prints the command that uploads it to KV.
-//   node proxy/admin.js add <name> [daily_limit=200] [paid_until=YYYY-MM-DD, default +30 days]
+//   node proxy/admin.js add <name> [daily_limit=100] [paid_until=YYYY-MM-DD, default +30 days]
 //   node proxy/admin.js pause|resume <name>
 //   node proxy/admin.js limit <name> <n>
 //   node proxy/admin.js until <name> <YYYY-MM-DD>
@@ -29,7 +29,7 @@ switch (cmd) {
   case 'add': {
     if (!name) fail('usage: add <name> [daily_limit] [paid_until]');
     if (Object.values(clients).some((c) => c.name === name)) fail('client exists: ' + name);
-    const limit = Number(arg || 200);
+    const limit = Number(arg || 100);
     const until = arg2 || new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
     if (!(limit > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(until)) fail('bad limit or date');
     const token = 'qa_' + crypto.randomBytes(24).toString('base64url');

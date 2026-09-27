@@ -41,9 +41,9 @@ All 10 emails side by side, rendered locally from the recorded model answers
 
 | Claim | How | Result |
 |---|---|---|
-| The model reads all 10 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **10/10** on each of `gemini-2.5-flash`, `gemini-flash-latest` (3.8-flash) and `gemini-flash-lite-latest` (3.5-flash-lite) — [`docs/live-eval.txt`](docs/live-eval.txt) |
-| Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 20 tests |
-| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 12 tests |
+| The model reads all 11 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **11/11** on `gemini-flash-lite-latest` (27.09); the first 10 also 10/10 on `gemini-2.5-flash` and `gemini-flash-latest` — [`docs/live-eval.txt`](docs/live-eval.txt) |
+| Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 21 tests |
+| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 15 tests |
 | A second run does not create duplicate drafts or call the model again | same | test |
 | Model down (HTTP 503) → no label, logged, retried 5 minutes later; an answer the script cannot read → 3 attempts, then left for a person | same | 3 tests |
 | Label fails after the draft is saved → still no second draft | same | test |
@@ -52,7 +52,7 @@ All 10 emails side by side, rendered locally from the recorded model answers
 | The tests catch real mistakes | broke the equipment check, the "we wrote last" check and the duplicate-draft guard on purpose | each made tests fail |
 
 ```bash
-npm test          # 44 tests, no network, no Google account
+npm test          # 46 tests, no network, no Google account
 ```
 
 **Live run in Gmail (26.09.2026).** A new Gmail account, the three `.gs` files
@@ -65,11 +65,14 @@ the demo loader, not sent. Running **Check inbox now** again right after created
 What the live run found that the tests did not:
 - `gemini-2.5-flash` answers 404 to a new API key ("no longer available to new
   users"). The default model is now `gemini-flash-latest`.
+- A real email with the whole request in the subject and "Hi" in the body was
+  skipped as "not a quote": the prompt had only the body. The subject now goes into
+  the prompt, and this case is test email 11.
 - The free tier answered 503 ("high demand") and 429 (daily limit) during the
   run. The script used to count these as failed attempts and give up on an email
   after 3; now a service error stops the run and the email waits for the next one.
 
-## The 10 test emails
+## The 11 test emails
 
 All invented. Addresses use the reserved `example.com/.net/.org` domains, phone numbers are `555-01xx`.
 
@@ -85,6 +88,7 @@ All invented. Addresses use the reserved `example.com/.net/.org` domains, phone 
 | 8 | Reply in a thread: weight comes in the third message | $675, uses the whole thread |
 | 9 | Signature with an address and phone numbers | signature ignored, $825 |
 | 10 | "Los Angelas", "San Antonoi", "53 ft van", "44k" | Los Angeles → San Antonio, dry van, 44,000 lbs, $2,950 |
+| 11 | Whole request in the subject, body just "Hi" (added after the live run missed exactly this) | Memphis → Dallas, reefer, 30,000 lbs, `[RATE]` |
 
 ## Setup for a broker
 

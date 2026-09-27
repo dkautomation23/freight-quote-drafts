@@ -1,15 +1,1 @@
-{
-  "is_quote_request": true,
-  "lanes": [
-    {
-      "origin_city": "Omaha",
-      "origin_state": "NE",
-      "destination_city": "Kansas City",
-      "destination_state": "MO",
-      "equipment": "reefer",
-      "weight_lbs": 30000,
-      "pickup_date": "2026-10-01",
-      "notes": "Frozen food, keep at 0F."
-    }
-  ]
-}
+{"is_quote_request": true, "lanes": [{"origin_city": "Omaha", "origin_state": "NE", "destination_city": "Kansas City", "destination_state": "MO", "equipment": "reefer", "weight_lbs": 30000, "pickup_date": "2026-10-01", "notes": "Frozen food, keep at 0F."}]}

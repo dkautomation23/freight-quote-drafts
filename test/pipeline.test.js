@@ -13,8 +13,10 @@ function fakeSheet(name) {
   const sheet = {
     name, rows,
     getDataRange: () => ({ getValues: () => rows.map((r) => r.slice()) }),
+    getLastRow: () => rows.length,
     appendRow: (r) => { rows.push(r); },
-    getRange: (row, col, n) => ({
+    getRange: (row, col, n, width) => ({
+      getValues: () => rows.slice(row - 1, row - 1 + n).map((r) => r.slice(0, width)),
       setValues: (vals) => { vals.forEach((v, i) => { rows[row - 1 + i] = v.slice(); }); return { setFontWeight: () => {} }; }
     }),
     setFrozenRows: () => {}
@@ -94,7 +96,7 @@ function world(emails, recordedFor) {
         assert.strictEqual(opts.headers['x-goog-api-key'], 'test-key');
         assert.ok(url.includes('gemini-flash-latest:generateContent'));
         const prompt = JSON.parse(opts.payload).contents[0].parts[0].text;
-        const email = emails.find((e) => prompt.includes(e.messages[0].body.slice(0, 30)));
+        const email = emails.find((e) => prompt.includes('Subject: ' + e.subject + String.fromCharCode(10)));
         if (email.id === failModelFor) return { getResponseCode: () => 503, getContentText: () => 'overloaded' };
         if (email.id === garbageFor) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sorry, I cannot help' }] } }] }) };
         const text = recordedFor(email.id);
@@ -131,7 +133,7 @@ test('setup: sheets, labels, key and one 5-minute trigger', () => {
   assert.strictEqual(w.triggers[0].n, 5);
 });
 
-test('10 emails: 9 drafts in their own threads with "Quote ready", 1 skipped, nothing sent', () => {
+test('11 emails: 10 drafts in their own threads with "Quote ready", 1 skipped, nothing sent', () => {
   const w = freshWorld();
   w.gas.processInbox();
   for (const t of w.threads) {
@@ -144,8 +146,8 @@ test('10 emails: 9 drafts in their own threads with "Quote ready", 1 skipped, no
     }
   }
   const log = w.log();
-  assert.strictEqual(log.length, 10);
-  assert.strictEqual(log.filter((r) => r[4] === 'draft').length, 9);
+  assert.strictEqual(log.length, 11);
+  assert.strictEqual(log.filter((r) => r[4] === 'draft').length, 10);
   assert.strictEqual(log.find((r) => r[3] === 'Rate request Dallas to Atlanta')[6], '$1,850');
 });
 
@@ -156,7 +158,7 @@ test('second run: no duplicate drafts, no extra model calls', () => {
   w.gas.processInbox();
   assert.strictEqual(w.calls.model, calls);
   assert.ok(w.threads.every((t) => t.drafts.length <= 1));
-  assert.strictEqual(w.log().length, 10);
+  assert.strictEqual(w.log().length, 11);
 });
 
 test('model down: logged as error, no label, retried on the next run', () => {
@@ -189,7 +191,7 @@ test('we wrote last: the thread is left alone', () => {
   w.gas.processInbox();
   const t = w.threads.find((x) => x.id === '01-full');
   assert.strictEqual(t.drafts.length, 0);
-  assert.strictEqual(w.log().length, 9);
+  assert.strictEqual(w.log().length, 10);
 });
 
 test('busy inbox: at most 20 model calls per run, the rest next run, oldest first', () => {
@@ -201,7 +203,7 @@ test('busy inbox: at most 20 model calls per run, the rest next run, oldest firs
   assert.strictEqual(w.calls.model, 20);
   assert.ok(w.threads.slice(0, 20).every((t) => t.drafts.length === 1), 'oldest 20 first');
   w.gas.processInbox();
-  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 27);
+  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 30);
 });
 
 test('label fails after the draft was made: logged, and no second draft next run', () => {
@@ -242,14 +244,14 @@ test('client token set: calls go to the proxy with the token, never to Gemini', 
   const seen = [];
   w.useProxy((url, opts) => {
     seen.push({ url, token: opts.headers['x-client-token'], body: JSON.parse(opts.payload) });
-    const id = loadGas().DEMO_EMAILS.find((e) => seen[seen.length - 1].body.prompt.includes(e.messages[0].body.slice(0, 30))).id;
+    const id = loadGas().DEMO_EMAILS.find((e) => seen[seen.length - 1].body.prompt.includes('Subject: ' + e.subject + String.fromCharCode(10))).id;
     return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ text: recorded(id) }) };
   });
   w.gas.processInbox();
-  assert.strictEqual(seen.length, 10);
+  assert.strictEqual(seen.length, 11);
   assert.ok(seen.every((c) => c.url === 'https://quote-proxy.test/' && c.token === 'qa_client_token'));
   assert.ok(seen.every((c) => Object.keys(c.body).join() === 'prompt'), 'only the prompt is sent');
-  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 9);
+  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 10);
 });
 
 test('proxy says the client is paused: no drafts, the reason in the Log, retried later', () => {
@@ -261,4 +263,17 @@ test('proxy says the client is paused: no drafts, the reason in the Log, retried
   assert.strictEqual(w.calls.model, 1, 'the run stops after the first refusal');
   assert.ok(w.threads.every((t) => t.drafts.length === 0));
   assert.match(w.log()[0][8], /402: service paused - contact Dmytro/);
+});
+
+test('big Log (30,000 old rows): only the tail is read, new mail still handled once', () => {
+  const w = freshWorld();
+  const old = [];
+  for (let i = 0; i < 30000; i++) old.push([new Date(), 'old-' + i, 'x', 'old', 'draft', '', '', '', '']);
+  w.sheets.Log.rows.push(...old);
+  let widest = 0;
+  const getRange = w.sheets.Log.getRange;
+  w.sheets.Log.getRange = (row, col, n, width) => { if (n && n > widest) widest = n; return getRange(row, col, n, width); };
+  w.gas.processInbox();
+  assert.ok(widest <= 3000, 'read ' + widest + ' rows');
+  assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 10);
 });

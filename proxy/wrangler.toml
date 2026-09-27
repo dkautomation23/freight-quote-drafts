@@ -3,12 +3,12 @@ main = "src/worker.js"
 compatibility_date = "2026-09-01"
 
 # Create before the first deploy: npx wrangler kv namespace create QUOTE_KV, then paste the id here.
-kv_namespaces = [{ binding = "QUOTE_KV", id = "REPLACE_WITH_KV_NAMESPACE_ID" }]
+kv_namespaces = [{ binding = "QUOTE_KV", id = "dfa172a6250d4241a2b6ee145c920f58" }]
 
 [vars]
 PROVIDER = "gemini"            # "gemini" (free tier, tests only) or "anthropic"
-MODEL = "gemini-flash-latest"  # for anthropic: "claude-haiku-4-5"
-GLOBAL_DAILY_LIMIT = "1000"    # all clients together, per UTC day
+MODEL = "gemini-flash-lite-latest" # for anthropic: "claude-haiku-4-5"
+GLOBAL_DAILY_LIMIT = "450"     # all clients together, per UTC day
 
 # The AI key is a secret, never a var and never in this file:
 #   npx wrangler secret put AI_KEY

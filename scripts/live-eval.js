@@ -59,7 +59,7 @@ function compare(id, text) {
   for (const email of gas.DEMO_EMAILS) {
     let problems;
     try {
-      const text = await callModel(gas.buildPrompt(email.messages));
+      const text = await callModel(gas.buildPrompt(email.messages, email.subject));
       fs.writeFileSync(path.join(__dirname, '..', 'test', 'recorded', email.id + '.json'), text.trim() + '\n');
       problems = compare(email.id, text);
     } catch (e) {

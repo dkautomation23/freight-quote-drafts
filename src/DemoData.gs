@@ -95,6 +95,14 @@ var DEMO_EMAILS = [
       from: 'jstone@example.org', date: '2026-09-24T15:38:00Z',
       body: 'lookin for a rate from Los Angelas CA to San Antonoi TX, 53 ft van, 44k, pick up 10/2'
     }]
+  },
+  {
+    id: '11-subject-only',
+    subject: 'Rate for Memphis TN to Dallas TX, reefer, 30,000 lbs, pickup Monday',
+    messages: [{
+      from: 'Nina Ford <nford@example.com>', date: '2026-09-24T15:45:00Z',
+      body: 'Hi'
+    }]
   }
 ];
 

@@ -12,5 +12,7 @@ module.exports = {
   '07-not-a-quote': { quote: false },
   '08-reply-in-thread': { quote: true, lanes: [{ o: 'Omaha, NE', d: 'Kansas City, MO', eq: 'reefer', w: 30000, date: '2026-10-01', missing: [], rate: 675 }] },
   '09-signature-phone': { quote: true, lanes: [{ o: 'Phoenix, AZ', d: 'Las Vegas, NV', eq: 'dry van', w: 20000, date: '2026-09-30', missing: [], rate: 825 }] },
-  '10-typos': { quote: true, lanes: [{ o: 'Los Angeles, CA', d: 'San Antonio, TX', eq: 'dry van', w: 44000, date: '2026-10-02', missing: [], rate: 2950 }] }
+  '10-typos': { quote: true, lanes: [{ o: 'Los Angeles, CA', d: 'San Antonio, TX', eq: 'dry van', w: 44000, date: '2026-10-02', missing: [], rate: 2950 }] },
+  // Added 27.09 after the live run: the real test email had the request in the subject and "Hi" as the body.
+  '11-subject-only': { quote: true, lanes: [{ o: 'Memphis, TN', d: 'Dallas, TX', eq: 'reefer', w: 30000, date: '2026-09-28', missing: [], rate: 'none' }] }
 };
