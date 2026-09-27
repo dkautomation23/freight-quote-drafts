@@ -74,6 +74,7 @@ async function callProvider(env, prompt, fetchImpl) {
       body: JSON.stringify({
         model: env.MODEL || 'claude-haiku-4-5',
         max_tokens: 1024,
+        temperature: 0,
         messages: [{ role: 'user', content: prompt }]
       })
     });

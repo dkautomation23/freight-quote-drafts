@@ -139,6 +139,7 @@ test('anthropic provider: Messages API call with claude-haiku-4-5', async () => 
   assert.strictEqual(calls[0].opts.headers['x-api-key'], 'test-ai-key');
   assert.strictEqual(calls[0].opts.headers['anthropic-version'], '2023-06-01');
   assert.strictEqual(JSON.parse(calls[0].opts.body).model, 'claude-haiku-4-5');
+  assert.strictEqual(JSON.parse(calls[0].opts.body).temperature, 0, 'same email, same reading: the default 1.0 made s20 flip between runs');
 });
 
 test('bad requests: GET, empty body, oversized prompt', async () => {
