@@ -4,24 +4,36 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { loadGas, recorded } = require('./gas.js');
+const { formatLocal, LOCAL_PATTERN } = require('./tz.js');
 
 const ME = 'me@example.com';
 const forbidden = (what) => () => { throw new Error('tried to ' + what); };
 
+// Formatting calls (fonts, colors, widths) are accepted and ignored; values are real.
+const anything = () => new Proxy(function () {}, { get: (t, k) => (k === 'then' ? undefined : anything), apply: () => anything() });
+const chain = (real) => new Proxy(real, { get: (t, k) => (k in t ? t[k] : () => chain(real)) });
+
 function fakeSheet(name) {
   const rows = [];
   const sheet = {
-    name, rows,
+    name, rows, frozen: 0,
     getDataRange: () => ({ getValues: () => rows.map((r) => r.slice()) }),
     getLastRow: () => rows.length,
+    getLastColumn: () => Math.max(1, ...rows.map((r) => r.length)),
     appendRow: (r) => { rows.push(r); },
-    getRange: (row, col, n, width) => ({
-      getValues: () => rows.slice(row - 1, row - 1 + n).map((r) => r.slice(0, width)),
-      setValues: (vals) => { vals.forEach((v, i) => { rows[row - 1 + i] = v.slice(); }); return { setFontWeight: () => {} }; }
-    }),
-    setFrozenRows: () => {}
+    insertRowBefore: (n) => { rows.splice(n - 1, 0, []); },
+    clear: () => { rows.length = 0; },
+    setFrozenRows: (n) => { sheet.frozen = n; },
+    getRange: (row, col, n, width) => chain({
+      getValues: () => rows.slice(row - 1, row - 1 + n).map((r) => r.slice(col - 1, col - 1 + width)),
+      setValues: (vals) => {
+        if (typeof row !== 'number') return chain({});
+        vals.forEach((v, i) => { const r = rows[row - 1 + i] || (rows[row - 1 + i] = []); v.forEach((x, j) => { r[col - 1 + j] = x; }); });
+        return chain({});
+      }
+    })
   };
-  return sheet;
+  return chain(sheet);
 }
 
 function world(emails, recordedFor) {
@@ -29,66 +41,99 @@ function world(emails, recordedFor) {
   const labels = {};
   const props = {};
   const triggers = [];
-  const calls = { model: 0 };
+  const calls = { model: 0, prompts: [] };
   let failModelFor = null;
   let garbageFor = null;
   let proxy = null;
   let failLabel = false;
   let msgSeq = 0;
 
-  const makeMessage = (thread, m) => ({
-    id: 'm' + (++msgSeq), m,
-    getId() { return this.id; },
-    getFrom: () => (m.isMine ? `Sam Reyes <${ME}>` : m.from),
-    getDate: () => new Date(m.date),
-    getPlainBody: () => m.body,
-    isDraft: () => false,
-    createDraftReply: (body) => { thread.drafts.push(body); },
-    reply: forbidden('reply'), replyAll: forbidden('reply all'), forward: forbidden('forward')
-  });
+  // Gmail API shapes (Users.Threads.get format "full"): headers + base64url body, ids like the real ones.
+  const b64 = (text) => Buffer.from(text, 'utf8').toString('base64url');
+  const makeMessage = (thread, m, labelIds) => {
+    const id = 'm' + (++msgSeq);
+    const from = m.isMine ? `Sam Reyes <${ME}>` : m.from;
+    const payload = m.html
+      ? { mimeType: 'multipart/alternative', headers: [], parts: [{ mimeType: 'text/html', body: { data: b64(m.html) } }] }
+      : { mimeType: 'text/plain', headers: [], body: { data: b64(m.body) } };
+    payload.headers = [{ name: 'From', value: from }, { name: 'Subject', value: thread.subject }, { name: 'Message-ID', value: `<${id}@mail.example.com>` }];
+    return { id, threadId: thread.id, labelIds: labelIds || (m.isMine ? ['SENT'] : ['INBOX']), internalDate: String(Date.parse(m.date)), payload };
+  };
 
   const threads = emails.map((e) => {
-    const thread = {
-      id: e.id, subject: e.subject, drafts: [], labels: [], messages: [],
-      getMessages() { return this.messages; },
-      getFirstMessageSubject() { return this.subject; },
-      addLabel(l) { if (failLabel) throw new Error('label service busy'); if (!this.labels.includes(l.name)) this.labels.push(l.name); },
-      reply: forbidden('reply'), createDraftReply: forbidden('draft on the thread instead of the customer message')
-    };
+    const thread = { id: e.id, subject: e.subject, drafts: [], draftMime: [], labels: [], messages: [] };
     thread.messages = e.messages.map((m) => makeMessage(thread, m));
     return thread;
   });
+  const byId = (id) => threads.find((t) => t.id === id);
+  let labelSeq = 0;
 
+  const order = [];
+  let active = null;
   const ss = {
     getSheetByName: (n) => sheets[n] || null,
-    insertSheet: (n) => (sheets[n] = fakeSheet(n)),
+    insertSheet: (n, at) => { order.splice(at === undefined ? order.length : at, 0, n); return (sheets[n] = fakeSheet(n)); },
+    getSpreadsheetTimeZone: () => 'America/Chicago',
+    setActiveSheet: (sh) => { active = sh.name; },
+    moveActiveSheet: (pos) => { order.splice(order.indexOf(active), 1); order.splice(pos - 1, 0, active); },
     toast: () => {}
   };
 
   const globals = {
     SpreadsheetApp: {
       getActiveSpreadsheet: () => ss,
+      newConditionalFormatRule: anything,
       getUi: () => ({
         Button: { OK: 'OK' }, ButtonSet: { OK_CANCEL: 'OK_CANCEL' },
         prompt: () => ({ getSelectedButton: () => 'OK', getResponseText: () => 'test-key' }),
         createMenu: () => ({ addItem() { return this; }, addSeparator() { return this; }, addToUi() {} })
       })
     },
-    GmailApp: {
-      getUserLabelByName: (n) => labels[n] || null,
-      createLabel: (n) => (labels[n] = { name: n }),
-      search: (q) => { assert.match(q, /in:inbox/); return threads.slice().reverse(); }, // Gmail: newest first
-      sendEmail: forbidden('send email')
-    },
+    Gmail: { Users: {
+      getProfile: () => ({ emailAddress: ME }),
+      Labels: {
+        list: () => ({ labels: Object.values(labels) }),
+        create: (res) => (labels[res.name] = { id: 'Label_' + (++labelSeq), name: res.name })
+      },
+      Threads: {
+        list: (user, opts) => { assert.match(opts.q, /in:inbox/); return { threads: threads.slice().reverse().map((t) => ({ id: t.id })) }; }, // newest first
+        get: (user, id, opts) => { assert.strictEqual(opts.format, 'full'); return JSON.parse(JSON.stringify({ id, messages: byId(id).messages })); },
+        modify: (res, user, id) => {
+          if (failLabel) throw new Error('label service busy');
+          for (const lid of res.addLabelIds) { const name = Object.values(labels).find((l) => l.id === lid).name; if (!byId(id).labels.includes(name)) byId(id).labels.push(name); }
+          assert.ok(!res.removeLabelIds, 'never removes labels');
+        },
+        trash: forbidden('trash a thread'), delete: forbidden('delete a thread')
+      },
+      Drafts: {
+        create: (res) => {
+          const t = byId(res.message.threadId);
+          const raw = Buffer.from(res.message.raw, 'base64url').toString('utf8');
+          const cut = raw.indexOf('\r\n\r\n');
+          t.draftMime.push(raw.slice(0, cut));
+          t.drafts.push(raw.slice(cut + 4));
+          t.messages.push(makeMessage(t, { isMine: true, date: new Date().toISOString(), body: raw.slice(cut + 4) }, ['DRAFT'])); // Gmail shows drafts inside the thread
+          return { id: 'r' + msgSeq };
+        },
+        send: forbidden('send a draft')
+      },
+      Messages: { send: forbidden('send'), trash: forbidden('trash'), delete: forbidden('delete') }
+    } },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     ScriptApp: {
       getProjectTriggers: () => triggers,
       deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
       newTrigger: (fn) => ({ timeBased: () => ({ everyMinutes: (n) => ({ create: () => triggers.push({ fn, n, getHandlerFunction: () => fn }) }) }) })
     },
-    Session: { getEffectiveUser: () => ({ getEmail: () => ME }) },
+    Session: { getEffectiveUser: forbidden('ask for the user email scope'), getScriptTimeZone: () => 'America/Chicago' },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
-    Utilities: { sleep: () => {} },
+    Utilities: {
+      sleep: () => {},
+      Charset: { UTF_8: 'UTF-8' },
+      base64EncodeWebSafe: (text) => Buffer.from(text, 'utf8').toString('base64url'),
+      base64DecodeWebSafe: (data) => [...Buffer.from(data, 'base64url')],
+      newBlob: (bytes) => ({ getDataAsString: () => Buffer.from(bytes).toString('utf8') }),
+      formatDate: (d, tz, pattern) => { assert.strictEqual(pattern, LOCAL_PATTERN); return formatLocal(d, tz); } },
     UrlFetchApp: {
       fetch: (url, opts) => {
         calls.model++;
@@ -96,6 +141,7 @@ function world(emails, recordedFor) {
         assert.strictEqual(opts.headers['x-goog-api-key'], 'test-key');
         assert.ok(url.includes('gemini-flash-latest:generateContent'));
         const prompt = JSON.parse(opts.payload).contents[0].parts[0].text;
+        calls.prompts.push(prompt);
         const email = emails.find((e) => prompt.includes('Subject: ' + e.subject + String.fromCharCode(10)));
         if (email.id === failModelFor) return { getResponseCode: () => 503, getContentText: () => 'overloaded' };
         if (email.id === garbageFor) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Sorry, I cannot help' }] } }] }) };
@@ -106,12 +152,12 @@ function world(emails, recordedFor) {
   };
 
   return {
-    gas: loadGas(globals), threads, sheets, labels, props, triggers, calls,
+    gas: loadGas(globals), threads, sheets, order, labels, props, triggers, calls,
     failModel: (id) => { failModelFor = id; },
     garbage: (id) => { garbageFor = id; },
     useProxy: (fn) => { proxy = fn; },
     failLabels: (on) => { failLabel = on; },
-    addMessage: (threadId, m) => { const t = threads.find((x) => x.id === threadId); t.messages.push(makeMessage(t, m)); },
+    addMessage: (threadId, m) => { const t = byId(threadId); t.messages.push(makeMessage(t, m)); },
     log: () => sheets.Log.rows.slice(1)
   };
 }
@@ -124,7 +170,12 @@ function freshWorld() {
 
 test('setup: sheets, labels, key and one 5-minute trigger', () => {
   const w = freshWorld();
-  assert.deepStrictEqual(Object.keys(w.sheets).sort(), ['Log', 'Rate history', 'Settings']);
+  assert.deepStrictEqual(w.order, ['Start here', 'Rate history', 'Settings', 'Log']);
+  assert.ok(['Rate history', 'Settings', 'Log'].every((n) => w.sheets[n].frozen === 1), 'frozen headers');
+  assert.deepStrictEqual(w.sheets['Start here'].rows.filter((r) => /^[123]$/.test(r[0])).map((r) => r[0]), ['1', '2', '3']);
+  const tz = w.sheets.Settings.rows.find((r) => r[0] === 'Time zone');
+  assert.strictEqual(tz[1], 'America/Chicago');
+  assert.match(tz[2], /America\/New_York/, 'hint next to the field');
   assert.strictEqual(w.sheets['Rate history'].rows.length, 21);
   assert.ok(w.labels['Quote ready'] && w.labels['Not a quote']);
   assert.strictEqual(w.props.GEMINI_API_KEY, 'test-key');
@@ -276,4 +327,61 @@ test('big Log (30,000 old rows): only the tail is read, new mail still handled o
   w.gas.processInbox();
   assert.ok(widest <= 3000, 'read ' + widest + ' rows');
   assert.strictEqual(w.threads.filter((t) => t.drafts.length === 1).length, 10);
+});
+
+test('time zone: an evening email in Chicago is dated by the sheet time zone, not UTC', () => {
+  const email = { id: 'tz', subject: 'Rate Dallas to Atlanta', messages: [{ from: 'Laura Kim <laura.kim@example.com>',
+    date: '2026-09-25T02:30:00Z', body: 'Dallas TX to Atlanta GA, dry van, 40,000 lbs, pickup Fri' }] };
+  const w = world([email], () => recorded('01-full'));
+  w.gas.setup();
+  w.gas.processInbox();
+  assert.match(w.calls.prompts[0], /sent on Thursday, 2026-09-24/);
+  assert.match(w.calls.prompts[0], /CUSTOMER \| 2026-09-24 9:30 PM/);
+  assert.match(w.threads[0].drafts[0], /pickup Fri, Sep 25/);
+});
+
+test('Log: newest row on top, readable "missing" names; an older copy gets the new settings on Setup', () => {
+  const w = freshWorld();
+  w.gas.processInbox();
+  const log = w.log();
+  assert.match(log[0][3], /^Rate for Memphis/, 'the newest email (11-subject-only) is the first row');
+  assert.strictEqual(log.find((r) => r[3] === 'Quote Houston - Memphis')[7], 'weight');
+  w.sheets.Settings.rows.splice(w.sheets.Settings.rows.findIndex((r) => r[0] === 'Time zone'), 1);
+  w.gas.setup();
+  assert.strictEqual(w.sheets.Settings.rows.filter((r) => r[0] === 'Time zone').length, 1);
+  assert.strictEqual(w.sheets.Settings.rows.filter((r) => r[0] === 'Your name').length, 1, 'no duplicates');
+});
+
+test('draft lands in the same thread: threadId, Re: subject, In-Reply-To and References of the last message', () => {
+  const w = freshWorld();
+  w.addMessage('02-no-weight', { from: 'Carlos Mendes <cmendes@example.net>', date: '2026-09-24T16:00:00Z', body: 'Weight is 41,000 lbs.' });
+  w.gas.processInbox();
+  const t = w.threads.find((x) => x.id === '02-no-weight');
+  const last = t.messages.filter((m) => !m.labelIds.includes('DRAFT')).pop();
+  const lastId = last.payload.headers.find((h) => h.name === 'Message-ID').value;
+  const mime = t.draftMime[0];
+  assert.match(mime, /^To: Carlos Mendes <cmendes@example\.net>/m);
+  assert.match(mime, /^Subject: Re: Quote Houston - Memphis$/m);
+  assert.match(mime, new RegExp('^In-Reply-To: ' + lastId + '$', 'm'));
+  assert.match(mime, new RegExp('^References: .*' + lastId + '$', 'm'));
+});
+
+test('HTML-only email: the text is read without tags', () => {
+  const email = { id: 'html', subject: 'Rate Dallas to Atlanta', messages: [{ from: 'Laura Kim <laura.kim@example.com>',
+    date: '2026-09-24T14:05:00Z', html: '<div>Dallas TX&nbsp;to Atlanta GA<br>dry van, 40,000 lbs</div>' }] };
+  const w = world([email], () => recorded('01-full'));
+  w.gas.setup();
+  w.gas.processInbox();
+  assert.match(w.calls.prompts[0], /Dallas TX to Atlanta GA\s*\ndry van, 40,000 lbs/);
+  assert.doesNotMatch(w.calls.prompts[0], /<div>|&nbsp;/);
+});
+
+test('permissions: no GmailApp (full mail access), only the narrow scopes in the manifest', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'Main.gs'), 'utf8');
+  assert.doesNotMatch(src, /GmailApp\./);
+  const scopes = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src', 'appsscript.json'), 'utf8')).oauthScopes;
+  assert.ok(scopes.includes('https://www.googleapis.com/auth/gmail.modify'));
+  assert.ok(!scopes.some((s) => s === 'https://mail.google.com/' || /gmail\.send|spreadsheets$|drive/.test(s)), scopes.join());
 });

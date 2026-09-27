@@ -42,7 +42,7 @@ export async function handle(request, env, fetchImpl, now = new Date()) {
   const allKey = 'n:all:' + today;
   const used = Number(await env.QUOTE_KV.get(clientKey)) || 0;
   const usedAll = Number(await env.QUOTE_KV.get(allKey)) || 0;
-  if (usedAll >= Number(env.GLOBAL_DAILY_LIMIT || 1000)) return reply(503, { error: PAUSED, reason: 'global limit' });
+  if (usedAll >= globalCeiling(clients, env, today)) return reply(503, { error: PAUSED, reason: 'global limit' });
   if (used >= Number(client.daily_limit || 0)) return reply(429, { error: PAUSED, reason: 'daily limit' });
 
   // Counted before the call: a request that reaches the provider costs money even if it fails.
@@ -54,6 +54,15 @@ export async function handle(request, env, fetchImpl, now = new Date()) {
   } catch (e) {
     return reply(502, { error: String(e.message).slice(0, 200) }); // provider status only, never the prompt
   }
+}
+
+// All clients together: their own limits plus 10% (KV counters are not atomic, parallel requests can
+// slip past a client limit), never above GLOBAL_DAILY_LIMIT. Paused and unpaid clients add nothing.
+export function globalCeiling(clients, env, today) {
+  const sum = Object.values(clients)
+    .filter((c) => c.enabled && c.paid_until && c.paid_until >= today)
+    .reduce((n, c) => n + Number(c.daily_limit || 0), 0);
+  return Math.min(Math.ceil(sum * 11 / 10), Number(env.GLOBAL_DAILY_LIMIT || 1000));
 }
 
 // One switch for the provider: PROVIDER = "gemini" (free, for tests) or "anthropic".

@@ -90,6 +90,36 @@ test('global ceiling across all clients: 503 once the day is used up', async () 
   assert.strictEqual(calls.length, 3);
 });
 
+test('client A hits its daily limit, client B still works', async () => {
+  const clients = {
+    [hash('tok-a')]: { name: 'Acme', paid_until: '2026-10-26', daily_limit: 2, enabled: true },
+    [hash('tok-b')]: { name: 'Beta', paid_until: '2026-10-26', daily_limit: 2, enabled: true }
+  };
+  const { send } = setup({ clients });
+  for (let i = 0; i < 2; i++) assert.strictEqual((await send('tok-a')).status, 200);
+  assert.strictEqual((await send('tok-a')).status, 429);
+  assert.strictEqual((await send('tok-b')).status, 200);
+  assert.strictEqual((await send('tok-b')).status, 200);
+});
+
+test('global ceiling = sum of enabled paid client limits + 10%, never above GLOBAL_DAILY_LIMIT', async () => {
+  const clients = {
+    [hash('tok-a')]: { name: 'Acme', paid_until: '2026-10-26', daily_limit: 100, enabled: true },
+    [hash('tok-b')]: { name: 'Beta', paid_until: '2026-10-26', daily_limit: 100, enabled: true },
+    [hash('tok-c')]: { name: 'Paused', paid_until: '2026-10-26', daily_limit: 500, enabled: false },
+    [hash('tok-d')]: { name: 'Unpaid', paid_until: '2026-09-01', daily_limit: 500, enabled: true }
+  };
+  const at = async (usedAll, env) => {
+    const { send, store } = setup({ clients, env });
+    store.m.set('n:all:2026-09-26', String(usedAll));
+    return (await send('tok-a')).status;
+  };
+  assert.strictEqual(await at(219), 200, '200 + 10% = 220');
+  assert.strictEqual(await at(220), 503);
+  assert.strictEqual(await at(149, { GLOBAL_DAILY_LIMIT: '150' }), 200);
+  assert.strictEqual(await at(150, { GLOBAL_DAILY_LIMIT: '150' }), 503, 'the hard cap wins');
+});
+
 test('provider down: 502 with the status only', async () => {
   const { send } = setup({ provider: async () => new Response('overloaded', { status: 503 }) });
   const res = await send('tok-a');

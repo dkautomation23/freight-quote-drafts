@@ -25,26 +25,30 @@ function stripQuoted(body) {
   return out.join('\n').trim();
 }
 
-// messages: [{from, date (ISO), body, isMine}], oldest first. Customers often put the whole request in the subject.
+// messages: [{from, date (ISO), local ("2026-09-24 9:30 PM" in the broker's time zone), body, isMine}], oldest first.
+// "Fri" and "tomorrow" are the customer's words in US time: a Thursday-evening email is already Friday in UTC.
+// Customers often put the whole request in the subject.
 function buildPrompt(messages, subject) {
   var recent = messages.slice(-4);
   var last = recent[recent.length - 1];
-  var d = new Date(last.date);
-  var weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()];
-  // Models are bad at weekday arithmetic ("Fri" from a Thursday), so hand them a calendar.
+  var when = function (m) { return m.local || m.date; };
+  var ymd = when(last).slice(0, 10).split('-').map(Number);
+  var d = new Date(Date.UTC(ymd[0], ymd[1] - 1, ymd[2]));
   var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var weekday = days[d.getUTCDay()];
+  // Models are bad at weekday arithmetic ("Fri" from a Thursday), so hand them a calendar.
   var calendar = [];
   for (var i = 0; i <= 14; i++) {
-    var c = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + i));
+    var c = new Date(Date.UTC(ymd[0], ymd[1] - 1, ymd[2] + i));
     calendar.push(c.toISOString().slice(0, 10) + ' ' + days[c.getUTCDay()] + (i === 0 ? ' (sent)' : ''));
   }
   var thread = recent.map(function (m) {
-    return '--- ' + (m.isMine ? 'BROKER (us)' : 'CUSTOMER') + ' | ' + m.date + '\n' + stripQuoted(m.body).slice(0, 4000);
+    return '--- ' + (m.isMine ? 'BROKER (us)' : 'CUSTOMER') + ' | ' + when(m) + '\n' + stripQuoted(m.body).slice(0, 4000);
   }).join('\n\n');
 
   return [
     'You read emails sent to a US freight broker and extract load details for a rate quote.',
-    'The latest message was sent on ' + weekday + ', ' + last.date.slice(0, 10) + '.',
+    'The latest message was sent on ' + weekday + ', ' + d.toISOString().slice(0, 10) + ' (broker local date).',
     '',
     'Rules:',
     '- is_quote_request is true only if the customer asks for a price/rate/quote to move freight.',
@@ -52,13 +56,17 @@ function buildPrompt(messages, subject) {
     '- One lane per origin/destination pair. An email can ask for several lanes.',
     '- Read the subject and the whole thread: later customer messages add or correct details of earlier ones.',
     '- Fix misspelled US city names. States as 2-letter codes (TX, GA).',
+    '- A place given only as a ZIP code (75201): use its city and state if you are sure, otherwise null.',
+    '- A multi-stop load on one truck is one lane: first pickup to final delivery.',
     '- equipment: "dry van", "reefer" or "flatbed". "53 ft van" or "van" is "dry van". Temperature-controlled is "reefer".',
-    '- weight_lbs: a number. "44k" = 44000. Tons are US tons (2000 lbs).',
+    '  Only what the customer asked for: not mentioned, LTL, box truck, step deck, tanker or power only is null (we ask).',
+    '- weight_lbs: a number. "44k" = 44000, "22,500#" = 22500. Tons are US tons (2000 lbs). Pallets without a weight: null.',
     '- pickup_date: YYYY-MM-DD. Resolve "Fri", "tomorrow", "next Thursday" with the calendar below; do not count days yourself.',
     '  "Fri" means the nearest coming Friday; "next Thursday" means the Thursday of the following week.',
+    '  Dates are US month/day: "10/2" is October 2, "9/29-9/30" is September 29. "ASAP" alone is null.',
     '- Ignore addresses and phone numbers in signatures.',
     '- If a field is not stated, use null. Never guess.',
-    '- notes: short, only special requirements (temperature, tarps, hazmat). Otherwise "".',
+    '- notes: short, only special requirements (temperature, tarps, hazmat, LTL, pallet count). Otherwise "".',
     '',
     'Return JSON only, exactly this shape:',
     '{"is_quote_request": true, "lanes": [{"origin_city": "Dallas", "origin_state": "TX",',
@@ -83,23 +91,69 @@ function titleCase(s) {
   return String(s).trim().toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
 }
 
+var STATES = {
+  AL: 'alabama', AK: 'alaska', AZ: 'arizona', AR: 'arkansas', CA: 'california', CO: 'colorado', CT: 'connecticut',
+  DE: 'delaware', DC: 'district of columbia', FL: 'florida', GA: 'georgia', HI: 'hawaii', ID: 'idaho', IL: 'illinois',
+  IN: 'indiana', IA: 'iowa', KS: 'kansas', KY: 'kentucky', LA: 'louisiana', ME: 'maine', MD: 'maryland',
+  MA: 'massachusetts', MI: 'michigan', MN: 'minnesota', MS: 'mississippi', MO: 'missouri', MT: 'montana',
+  NE: 'nebraska', NV: 'nevada', NH: 'new hampshire', NJ: 'new jersey', NM: 'new mexico', NY: 'new york',
+  NC: 'north carolina', ND: 'north dakota', OH: 'ohio', OK: 'oklahoma', OR: 'oregon', PA: 'pennsylvania',
+  RI: 'rhode island', SC: 'south carolina', SD: 'south dakota', TN: 'tennessee', TX: 'texas', UT: 'utah',
+  VT: 'vermont', VA: 'virginia', WA: 'washington', WV: 'west virginia', WI: 'wisconsin', WY: 'wyoming'
+};
+
+// "Texas", "tx" -> "TX"; anything else -> null, so the draft asks instead of guessing.
+function stateCode(s) {
+  var t = String(s).trim().toLowerCase().replace(/\./g, '');
+  if (STATES[t.toUpperCase()]) return t.toUpperCase();
+  for (var code in STATES) if (STATES[code] === t) return code;
+  return null;
+}
+
+function place(city, state) {
+  city = blankToNull(city);
+  var code = blankToNull(state) && stateCode(state);
+  if (!city || !code || /\d/.test(city)) return null; // a ZIP is not a city
+  // "Saint Louis", "st louis" -> "St. Louis", the way brokers write it in rate sheets.
+  return { city: titleCase(city).replace(/^(Saint|St\.?)\s+/, 'St. '), state: code };
+}
+
+// "44k", "22,500#", "20 tons" -> lbs.
+function weightLbs(w) {
+  if (typeof w === 'number') return w;
+  var t = String(w).toLowerCase().replace(/,/g, '');
+  var n = parseFloat(t.replace(/[^0-9.]/g, ''));
+  if (!(n > 0)) return null;
+  if (/\d\s*k\b/.test(t)) return n * 1000;
+  if (/\btons?\b/.test(t)) return n * 2000;
+  return n;
+}
+
+// ISO, or US "10/02/2026" / "10/2/26".
+function isoDate(v) {
+  var t = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  var m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!m) return null;
+  var pad = function (x) { return ('0' + x).slice(-2); };
+  return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + pad(m[1]) + '-' + pad(m[2]);
+}
+
 function normalizeLane(raw) {
   var lane = {};
-  var oc = blankToNull(raw.origin_city), os = blankToNull(raw.origin_state);
-  var dc = blankToNull(raw.destination_city), ds = blankToNull(raw.destination_state);
-  lane.origin = oc && os ? { city: titleCase(oc), state: String(os).trim().toUpperCase() } : null;
-  lane.destination = dc && ds ? { city: titleCase(dc), state: String(ds).trim().toUpperCase() } : null;
+  lane.origin = place(raw.origin_city, raw.origin_state);
+  lane.destination = place(raw.destination_city, raw.destination_state);
 
   var eq = blankToNull(raw.equipment);
   eq = eq ? String(eq).trim().toLowerCase() : null;
   lane.equipment = EQUIPMENT.indexOf(eq) >= 0 ? eq : null;
 
   var w = blankToNull(raw.weight_lbs);
-  w = typeof w === 'string' ? Number(w.replace(/[^0-9.]/g, '')) : w;
+  w = w === null ? null : weightLbs(w);
   lane.weight_lbs = typeof w === 'number' && w > 0 ? Math.round(w) : null;
 
   var pd = blankToNull(raw.pickup_date);
-  lane.pickup_date = pd && /^\d{4}-\d{2}-\d{2}$/.test(pd) ? pd : null;
+  lane.pickup_date = pd ? isoDate(pd) : null;
 
   lane.notes = blankToNull(raw.notes) || '';
   lane.missing = REQUIRED_FIELDS.filter(function (f) { return lane[f] === null; });
@@ -129,8 +183,10 @@ function median(nums) {
 // similar = same states + equipment: min-max range, for the broker to judge.
 function findRate(lane, rows) {
   if (!lane.origin || !lane.destination || !lane.equipment) return { kind: 'none' };
-  var key = function (s) { return String(s || '').trim().toLowerCase(); };
-  var sameEq = rows.filter(function (r) { return key(r.equipment) === lane.equipment && Number(r.rate) > 0; });
+  var key = function (s) { return String(s || '').trim().toLowerCase().replace(/^(saint|st\.?)\s+/, 'st. '); };
+  var num = function (v) { return Number(String(v).replace(/[$,\s]/g, '')); }; // "$1,850" typed as text
+  rows = rows.map(function (r) { var c = {}; for (var k in r) c[k] = r[k]; c.rate = num(r.rate); return c; });
+  var sameEq = rows.filter(function (r) { return key(r.equipment) === lane.equipment && r.rate > 0; });
   var byDate = function (a, b) { return new Date(b.date) - new Date(a.date); };
 
   var exact = sameEq.filter(function (r) {

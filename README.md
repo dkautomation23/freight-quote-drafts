@@ -22,6 +22,26 @@ new email ──> AI reads it ──> JSON: origin, destination, equipment, weig
 
 ![Gmail: inbox with labels, then two drafts opened](docs/gmail-flow.gif)
 
+## Want it running on your inbox?
+
+Dmytro sets it up for you, entirely by email: no calls, no meetings.
+
+1. You get a link to a ready Google Sheet with your settings filled in.
+2. You click **File → Make a copy**, then **Quote Assistant → Setup** and **Allow**.
+3. Drafts start showing up in Gmail. Replace the sample rates with your own when you like.
+
+**You will see "Google hasn't verified this app".** The copy of the script belongs
+to you: the "developer" on that screen is your own email address, and the code runs
+in your own Google account. Click **Advanced → Go to Quote Assistant (unsafe) →
+Select all → Continue**. The script asks only for what it uses: read mail, create
+drafts and labels (`gmail.modify`), this one sheet, a 5-minute timer and calls to the
+AI service. Google's wording for `gmail.modify` still mentions sending; the code has
+no send call, and the tests fail if one appears.
+
+Agencies that set up inboxes for brokers: white-label by agreement.
+
+Write to **dkautomation.lab@gmail.com**.
+
 A live run in a test Gmail account on 26.09.2026: 10 test emails in, 9 drafts
 saved in their own threads with the label `Quote ready`, the invoice labelled
 `Not a quote`. Nothing was sent.
@@ -42,8 +62,10 @@ All 10 emails side by side, rendered locally from the recorded model answers
 | Claim | How | Result |
 |---|---|---|
 | The model reads all 11 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **11/11** on `claude-haiku-4-5` through the deployed proxy (27.09); Gemini 10/10 and 11/11 on earlier prompts — [`docs/live-eval.txt`](docs/live-eval.txt) |
-| Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 22 tests |
-| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 15 tests |
+| 40 new emails from a separate author (forwarded load-board posts, multi-stop, ZIP codes only, LTL pallets, hazmat, HTML leftovers, corrections in replies, Spanish, 10/2 dates, carrier offers and invoices) are read correctly | `scripts/stress.js` through the live proxy, answers written by another agent that never saw the prompt | **40/40** whole email correct (first run 36/40; the misses fixed in the prompt and code, see [`docs/stress-report.md`](docs/stress-report.md)) |
+| Rates, questions and the reply text are right for each email; US formats (`Fri, Sep 25`, `$1,850`, `44,000 lbs`, `10/2`, `Texas` → `TX`, ZIP is never a city) | `npm test` on the recorded model answers | 29 tests |
+| Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail API and Sheets where any send, trash or delete throws | 18 tests |
+| A Thursday 9:30 PM email in Chicago (Friday 02:30 UTC) is dated Thursday, so "Fri" is the next day | same, with the sheet's time zone | test |
 | A second run does not create duplicate drafts or call the model again | same | test |
 | Model down (HTTP 503) → no label, logged, retried 5 minutes later; an answer the script cannot read → 3 attempts, then left for a person | same | 3 tests |
 | Label fails after the draft is saved → still no second draft | same | test |
@@ -52,7 +74,7 @@ All 10 emails side by side, rendered locally from the recorded model answers
 | The tests catch real mistakes | broke the equipment check, the "we wrote last" check and the duplicate-draft guard on purpose | each made tests fail |
 
 ```bash
-npm test          # 47 tests, no network, no Google account
+npm test          # 61 tests, no network, no Google account
 ```
 
 **Live run in Gmail (26.09.2026).** A new Gmail account, the three `.gs` files
@@ -68,6 +90,9 @@ What the live run found that the tests did not:
 - A real email with the whole request in the subject and "Hi" in the body was
   skipped as "not a quote": the prompt had only the body. The subject now goes into
   the prompt, and this case is test email 11.
+- An evening email in the US is already the next day in UTC, and the prompt used the UTC
+  date: "tomorrow" written on Thursday evening became Saturday. Dates are now read in
+  the time zone from **Settings**.
 - Claude Haiku got the weekday wrong in 3 of 11 emails ("Fri" from a Thursday became
   Saturday). The prompt now carries a 14-day calendar; after that 11/11.
 - The free tier answered 503 ("high demand") and 429 (daily limit) during the
@@ -92,15 +117,19 @@ All invented. Addresses use the reserved `example.com/.net/.org` domains, phone 
 | 10 | "Los Angelas", "San Antonoi", "53 ft van", "44k" | Los Angeles → San Antonio, dry van, 44,000 lbs, $2,950 |
 | 11 | Whole request in the subject, body just "Hi" (added after the live run missed exactly this) | Memphis → Dallas, reefer, 30,000 lbs, `[RATE]` |
 
-## Setup for a broker
+## The sheet
 
-1. Open the shared Google Sheet and click **File → Make a copy**.
-2. In the copy: **Quote Assistant → Setup**, then **Allow**, then paste the API key when asked.
-3. Replace the sample rows in **Rate history** with your own lanes and rates.
-   Put your name and company in **Settings**.
+Four tabs, in this order:
 
-From then on the script checks the inbox every 5 minutes. Every email it
-handles is one row in the **Log** sheet.
+- **Start here** — the three steps above in big type, what the Log colors mean, where to write for help.
+- **Rate history** — one row per past load; dates as `9/10/2026`, rates as `$1,850`.
+- **Settings** — your name, company, **time zone** (so "Fri" in an evening email is read
+  as the customer's Friday, not UTC's), the client token. A hint next to each field.
+- **Log** — one row per email, **newest on top**; green = draft ready, grey = not a
+  quote, red = needs a look. Times in 12-hour US format.
+
+Headers stay frozen while scrolling. Running **Setup** again on an older copy adds any
+new settings and formatting without touching your rows.
 
 ## Try it from the source
 
@@ -131,6 +160,7 @@ count toward the 3 attempts; only an answer the script cannot read does.
 
 - `src/Core.gs` — prompt, reading the model answer, rate lookup, reply text. No Google services, so it runs in Node tests as is.
 - `src/Main.gs` — menu, setup, the 5-minute trigger, Gmail and Sheets.
+- Gmail goes through the Gmail API (advanced service) with `gmail.modify`, not `GmailApp`, which would ask for full mail access including permanent deletion.
 - `callModel()` in `Main.gs` is the only place that talks to the AI. To move to a proxy or another provider, change that one function.
 - `test/gas.js` loads the `.gs` files into one shared scope, the way Apps Script does.
 
@@ -167,22 +197,26 @@ node proxy/admin.js list
 node proxy/admin.js push                                # prints the upload command
 ```
 
-**What a runaway client can cost.** Measured on the 10 test emails: the prompt is
-about 1,700 characters (roughly 450 tokens), the answer up to 560 characters
-(roughly 150 tokens). At Claude Haiku 4.5 prices ($1 per million input tokens,
-$5 per million output) that is about $0.0013 per email; a long thread (4 messages of
-4,000 characters, the most the script sends) is about $0.005. With a limit of 200
-emails a day, one client costs at most about $1 a day, usually about $0.25; the
-global limit (1,000 a day by default) caps all clients together at about $5 a day.
+**What a runaway client can cost.** The worst request the proxy accepts is a
+20,000-character prompt (about 5,000 tokens, the Worker refuses anything longer) with
+the full 1,024-token answer. At Claude Haiku 4.5 prices ($1 per million input tokens,
+$5 per million output) that is about $0.005 + $0.005 = **$0.01 per request**. With the
+default limit of 100 requests a day, **one client costs at most about $1 a day**.
+A typical email is far smaller: the prompt is about 1,700 characters and the answer
+about 150 tokens, roughly $0.0013.
+
+All clients together are capped at the sum of the daily limits of enabled, paid
+clients plus 10% (the KV counters are not atomic, so two requests in the same instant
+can both take the last slot), and never above `GLOBAL_DAILY_LIMIT`. When client A
+uses up its day, client B keeps working: a test checks exactly that.
 
 Before switching `PROVIDER` to `anthropic`: set a monthly spend limit in the
 Anthropic Console and keep auto-reload off, so a bug can stop the service but cannot
 run up a bill.
 
-Checked locally: 12 proxy tests (every guard also broken on purpose to see its test
-fail) and one real Gemini call through the Worker code. Not yet deployed to
-Cloudflare; the KV counters are not atomic, so two requests in the same instant can
-both pass the last free slot.
+Checked: 14 proxy tests (every guard also broken on purpose to see its test fail).
+Live at `https://quote-proxy.dkautomation.workers.dev` since 27.09.2026 with
+`claude-haiku-4-5`.
 
 ## What the AI sees
 
@@ -198,4 +232,6 @@ No sheet data, no attachments, no other emails. The rate history stays in the sh
 
 ## License
 
-MIT
+[PolyForm Noncommercial 1.0.0](LICENSE): free to read, run and change for
+noncommercial use. Commercial use and installing it for your own business: write to
+the author, dkautomation.lab@gmail.com.

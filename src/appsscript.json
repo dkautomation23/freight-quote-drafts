@@ -4,7 +4,18 @@
   "exceptionLogging": "STACKDRIVER",
   "dependencies": {
     "enabledAdvancedServices": [
-      { "userSymbol": "Gmail", "serviceId": "gmail", "version": "v1" }
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
+      }
     ]
-  }
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/spreadsheets.currentonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.container.ui"
+  ]
 }

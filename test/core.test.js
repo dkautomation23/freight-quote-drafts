@@ -103,3 +103,60 @@ test('greeting skips numbers and keeps accented names', () => {
   assert.strictEqual(gas.firstName('LAURA KIM <l@example.com>'), 'Laura');
   assert.strictEqual(gas.firstName('123 <x@example.com>'), '');
 });
+
+// A US evening email is already the next day in UTC: dates must come from the broker's time zone.
+test('time zone: Thursday 9:30 PM in Chicago (Fri 02:30 UTC) is sent Thursday, so "Fri" is Sep 25', () => {
+  const msgs = [{ from: 'A <a@example.com>', date: '2026-09-25T02:30:00Z', local: '2026-09-24 9:30 PM', body: 'Dallas TX to Atlanta GA, van, 40k, pickup Fri' }];
+  const p = gas.buildPrompt(msgs, 'Rate');
+  assert.match(p, /sent on Thursday, 2026-09-24/);
+  assert.match(p, /2026-09-24 Thursday \(sent\); 2026-09-25 Friday;/);
+  assert.match(p, /CUSTOMER \| 2026-09-24 9:30 PM/, 'thread shows local time, not UTC');
+  assert.doesNotMatch(p, /02:30/);
+});
+
+test('US input: MM/DD dates and ZIP-only places are explained in the prompt', () => {
+  const p = gas.buildPrompt(gas.DEMO_EMAILS[0].messages, 'x');
+  assert.match(p, /"10\/2" is October 2/);
+  assert.match(p, /ZIP/);
+});
+
+test('US values: state names become 2-letter codes, ZIPs are not cities, weights with k/tons', () => {
+  const lane = (o) => gas.normalizeLane({ origin_city: 'Dallas', origin_state: 'TX', destination_city: 'Atlanta', destination_state: 'GA',
+    equipment: 'dry van', weight_lbs: 40000, pickup_date: '2026-09-25', ...o });
+  assert.strictEqual(lane({ origin_state: 'Texas' }).origin.state, 'TX');
+  assert.strictEqual(lane({ destination_state: ' new york ' }).destination.state, 'NY');
+  assert.strictEqual(lane({ origin_state: 'Tex' }).origin, null, 'unknown state -> ask');
+  assert.strictEqual(lane({ origin_city: '75201' }).origin, null, 'a ZIP is not a city');
+  assert.strictEqual(lane({ weight_lbs: '44k' }).weight_lbs, 44000);
+  assert.strictEqual(lane({ weight_lbs: '22,500#' }).weight_lbs, 22500);
+  assert.strictEqual(lane({ weight_lbs: '20 tons' }).weight_lbs, 40000);
+  assert.strictEqual(lane({ pickup_date: '10/02/2026' }).pickup_date, '2026-10-02', 'US MM/DD/YYYY');
+  assert.strictEqual(lane({ pickup_date: '10/2/26' }).pickup_date, '2026-10-02');
+});
+
+test('US output: "Fri, Sep 25", "$1,850", "44,000 lbs" in the draft', () => {
+  const items = [{ lane: gas.normalizeLane({ origin_city: 'Dallas', origin_state: 'TX', destination_city: 'Atlanta', destination_state: 'GA',
+    equipment: 'dry van', weight_lbs: 44000, pickup_date: '2026-09-25' }), quote: { kind: 'exact', rate: 1850 } }];
+  const body = gas.composeReply('Laura <l@example.com>', items, settings);
+  assert.match(body, /Dallas, TX to Atlanta, GA \(dry van, 44,000 lbs, pickup Fri, Sep 25\): \$1,850 all-in/);
+  assert.match(gas.money(12500), /^\$12,500$/);
+});
+
+test('rate history typed as text ("$1,850") still counts', () => {
+  const lane = gas.normalizeLane({ origin_city: 'Dallas', origin_state: 'TX', destination_city: 'Atlanta', destination_state: 'GA', equipment: 'dry van' });
+  const q = gas.findRate(lane, [{ date: '2026-09-01', originCity: 'Dallas', originState: 'TX', destCity: 'Atlanta', destState: 'GA', equipment: 'Dry Van', rate: '$1,850' }]);
+  assert.deepStrictEqual({ ...q }, { kind: 'exact', rate: 1850, loads: 1 });
+});
+
+// Found by the stress test: the model wrote "Saint Louis", the expected answer and rate sheets say "St. Louis".
+test('"Saint Louis" and "St Louis" are the same city, in the draft and in the rate lookup', () => {
+  const lane = gas.normalizeLane({ origin_city: 'Kansas City', origin_state: 'MO', destination_city: 'Saint Louis', destination_state: 'MO', equipment: 'dry van' });
+  assert.strictEqual(lane.destination.city, 'St. Louis');
+  const q = gas.findRate(lane, [{ date: '2026-09-01', originCity: 'Kansas City', originState: 'MO', destCity: 'St Louis', destState: 'MO', equipment: 'dry van', rate: 900 }]);
+  assert.strictEqual(q.kind, 'exact');
+});
+
+// Found by the stress test: "8 pallets, LTL" and "box truck" became "dry van" instead of a question.
+test('prompt: equipment only when the customer asked for it', () => {
+  assert.match(gas.buildPrompt(gas.DEMO_EMAILS[0].messages, 'x'), /not mentioned, LTL, box truck.* is null/);
+});

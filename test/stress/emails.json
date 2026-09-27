@@ -1,0 +1,1017 @@
+[
+  {
+    "id": "s01-dallas-atlanta-dryvan",
+    "category": "plain",
+    "subject": "Quote request - Dallas to Atlanta",
+    "messages": [
+      {
+        "from": "Jenna Ford <jenna.ford@blueridgeproduce.example.com>",
+        "date": "2026-09-21T14:05:00Z",
+        "body": "Hi Sam,\n\nLooking for a quote on the following:\n\nO: Dallas, TX\nD: Atlanta, GA\nEquip: 53' dry van\nWeight: 40,000 lbs\nP/U: this Friday, 9/25\n\nLet me know your best rate.\n\nThanks,\nJenna Ford\nBlue Ridge Produce Co.\n555-0199",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 40000,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s02-chicago-denver-reefer",
+    "category": "plain",
+    "subject": "Reefer load - Chicago to Denver",
+    "messages": [
+      {
+        "from": "Mike Tran <mtran@frostlinefoods.example.com>",
+        "date": "2026-09-21T16:20:00Z",
+        "body": "Sam,\n\nNeed a reefer quote:\nChicago, IL -> Denver, CO\nReefer, keep at 36F\nWeight approx 36,000 lbs\nPickup next Wednesday\n\nCan you get back to me today if possible?\n\nMike Tran\nFrostline Foods\n555-0100",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Chicago, IL",
+          "d": "Denver, CO",
+          "eq": "reefer",
+          "w": 36000,
+          "date": "2026-09-30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s03-houston-memphis-flatbed",
+    "category": "plain",
+    "subject": "Flatbed quote needed",
+    "messages": [
+      {
+        "from": "Darnell Price <dprice@gulfcoaststeel.example.com>",
+        "date": "2026-09-22T13:45:00Z",
+        "body": "Hey Sam,\n\nWe've got a flatbed load, 48ft trailer needed.\nHouston, TX to Menphis, TN\nNo firm weight yet, will confirm once loaded.\nNeed it picked up Thursday 10/1.\n\nWhat's your rate?\n\nDarnell Price\nGulf Coast Steel Supply\nOffice: 555-0101",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Houston, TX",
+          "d": "Memphis, TN",
+          "eq": "flatbed",
+          "w": null,
+          "date": "2026-10-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s04-nashville-charlotte-richmond-two-lanes",
+    "category": "plain",
+    "subject": "Two loads this week - Nashville and Charlotte",
+    "messages": [
+      {
+        "from": "Allison Cho <acho@carolinatextile.example.com>",
+        "date": "2026-09-22T18:15:00Z",
+        "body": "Hi Sam,\n\nWe have two separate loads to cover:\n\n1) Nashville, TN -> Charlotte, NC, dry van, 44,000 lbs, p/u Monday 9/28\n2) Charlotte, NC -> Richmond, VA, reefer, 38,000 lbs, p/u Wednesday 9/30\n\nPlease quote both separately.\n\nThanks,\nAllison Cho\nCarolina Textile Group\n555-0102",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Nashville, TN",
+          "d": "Charlotte, NC",
+          "eq": "dry van",
+          "w": 44000,
+          "date": "2026-09-28"
+        },
+        {
+          "o": "Charlotte, NC",
+          "d": "Richmond, VA",
+          "eq": "reefer",
+          "w": 38000,
+          "date": "2026-09-30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s05-elpaso-phoenix-tomorrow-evening",
+    "category": "plain",
+    "subject": "Quick quote - El Paso to Phoenix",
+    "messages": [
+      {
+        "from": "Ricky Salas <rsalas@desertsunbuilding.example.com>",
+        "date": "2026-09-25T02:15:00Z",
+        "body": "Sam,\n\nSorry for the late email, just found out about this one. Need to move 20 tons from El Paso, TX to Phoenix, AZ, pickup tomorrow. No trailer type specified, whatever you can get.\n\nCall me first thing.\n\nRicky Salas\nDesert Sun Building Materials\n555-0103",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "El Paso, TX",
+          "d": "Phoenix, AZ",
+          "eq": null,
+          "w": 40000,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s06-fwd-dat-dallas-atlanta",
+    "category": "forwarded-loadboard",
+    "subject": "FW: Load posting - need rate",
+    "messages": [
+      {
+        "from": "Oscar Beltran <obeltran@apexdist.example.com>",
+        "date": "2026-09-23T15:00:00Z",
+        "body": "Sam, see below, can you quote this lane for us? Need it covered by end of week.\n\n---------- Forwarded message ---------\nFrom: DAT Load Board Alerts\nORIGIN: Dallas, TX 75201\nDEST: Atlanta, GA 30303\nEQUIP: Van\nWEIGHT: 42,000 lbs\nREADY: 09/28/26\nCOMMODITY: General freight, palletized\n\nThanks,\nOscar Beltran\nApex Distribution\n555-0104",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 42000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s07-fwd-dat-memphis-chicago-reefer",
+    "category": "forwarded-loadboard",
+    "subject": "Fwd: DAT posting - reefer",
+    "messages": [
+      {
+        "from": "Carla Nguyen <cnguyen@southerncoldchain.example.com>",
+        "date": "2026-09-23T19:30:00Z",
+        "body": "What's your best rate on this one?\n\n---------- Forwarded message ----------\nPICKUP: Memphis, TN 38118\nDELIVERY: Chicago, IL 60607\nEQUIP: Reefer\nTEMP: 34F\nWT: 38,500 lbs\nDATE: 09/26/2026\n\nLet me know ASAP so I can respond to the shipper.\n\nCarla Nguyen\nSouthern Cold Chain LLC\n555-0105",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Memphis, TN",
+          "d": "Chicago, IL",
+          "eq": "reefer",
+          "w": 38500,
+          "date": "2026-09-26"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s08-fwd-truck-available-not-quote",
+    "category": "forwarded-loadboard",
+    "subject": "FW: Truck available",
+    "messages": [
+      {
+        "from": "Terry Voss <tvoss@westwaybrokers.example.com>",
+        "date": "2026-09-24T14:00:00Z",
+        "body": "Got this from one of our carriers, thought you might have something for this lane.\n\n---------- Forwarded message ----------\nTRUCK AVAILABLE: 53' Dry Van\nCurrently in: Los Angeles, CA 90021\nCan run: anywhere west, will consider east with right rate\nAvailable: 9/29\nContact: Big Rig Carriers, 555-0106\n\nLet me know if you've got a load for it.\n\nTerry Voss\nWestway Brokers Network\n555-0107",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s09-dallas-memphis-atlanta-multistop",
+    "category": "multi-stop",
+    "subject": "Multi-stop load - need one quote",
+    "messages": [
+      {
+        "from": "Hector Lima <hlima@limadist.example.com>",
+        "date": "2026-09-21T20:40:00Z",
+        "body": "Hi Sam,\n\nOne truck, two stops:\nPick up: Dallas, TX\nStop 1 (partial drop): Memphis, TN\nFinal drop: Atlanta, GA\nDry van, total weight 45,000 lbs\nPickup Tuesday 9/29\n\nQuote the whole run please.\n\nHector Lima\nLima Distribution\n555-0108",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 45000,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s10-chicago-indy-charlotte-multistop",
+    "category": "multi-stop",
+    "subject": "3-stop dry run - Chicago area",
+    "messages": [
+      {
+        "from": "Beth Owens <bowens@midstatemetals.example.com>",
+        "date": "2026-09-22T14:10:00Z",
+        "body": "Sam,\n\nNeed one truck, multi stop:\nP/U Chicago, IL\nDrop 1: Indianapolis, IN (partial)\nFinal drop: Charlotte, NC\nFlatbed needed\nTotal weight 38,000 lbs\nPickup Monday 9/28\n\nThanks,\nBeth Owens\nMidstate Metals\n555-0109",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Chicago, IL",
+          "d": "Charlotte, NC",
+          "eq": "flatbed",
+          "w": 38000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s11-houston-sanantonio-elpaso-multistop",
+    "category": "multi-stop",
+    "subject": "Houston multi-drop",
+    "messages": [
+      {
+        "from": "Julio Marin <jmarin@marinfreight.example.com>",
+        "date": "2026-09-23T16:50:00Z",
+        "body": "Hey Sam,\n\nPickup Houston, TX, first drop San Antonio, TX (partial), final delivery El Paso, TX. Dry van, 26,400 lbs total. Pickup Thursday 10/1.\n\nOne truck the whole way, please quote as one move.\n\nJulio Marin\nMarin Freight Solutions\n555-0110",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Houston, TX",
+          "d": "El Paso, TX",
+          "eq": "dry van",
+          "w": 26400,
+          "date": "2026-10-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s12-zip-75201-30303",
+    "category": "zip-codes",
+    "subject": "Quote - 75201 to 30303",
+    "messages": [
+      {
+        "from": "Dana Whitfield <dwhitfield@whitfieldlogistics.example.com>",
+        "date": "2026-09-23T13:20:00Z",
+        "body": "Sam,\n\nCan you quote 75201 to 30303? Dry van, 40,000 lbs, pickup Monday.\n\nThanks,\nDana Whitfield\nWhitfield Logistics\n555-0111",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 40000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s13-zip-60607-77002-reefer",
+    "category": "zip-codes",
+    "subject": "Reefer quote 60607-77002",
+    "messages": [
+      {
+        "from": "Paul Ostrander <postrander@gulflinecold.example.com>",
+        "date": "2026-09-24T15:10:00Z",
+        "body": "Hi Sam,\n\nNeed reefer, 60607 to 77002. Weight is 24,500 lbs. Pickup 9/26.\n\nRegards,\nPaul Ostrander\nGulfline Cold Storage\n555-0112",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Chicago, IL",
+          "d": "Houston, TX",
+          "eq": "reefer",
+          "w": 24500,
+          "date": "2026-09-26"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s14-zip-two-lanes-west",
+    "category": "zip-codes",
+    "subject": "Two lanes - west coast",
+    "messages": [
+      {
+        "from": "Nina Alvarez <nalvarez@pacificrimmaterials.example.com>",
+        "date": "2026-09-25T14:30:00Z",
+        "body": "Sam,\n\nTwo separate loads:\n\n1) 90021 to 38118, flatbed, no weight yet, pickup 10/2\n2) 38118 to 60607, dry van, 32,000 lbs, pickup 9/29-9/30\n\nQuote both please.\n\nNina Alvarez\nPacific Rim Materials\n555-0113",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Los Angeles, CA",
+          "d": "Memphis, TN",
+          "eq": "flatbed",
+          "w": null,
+          "date": "2026-10-02"
+        },
+        {
+          "o": "Memphis, TN",
+          "d": "Chicago, IL",
+          "eq": "dry van",
+          "w": 32000,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s15-zip-77002-75201-messyk",
+    "category": "zip-codes",
+    "subject": "Quick one - 77002 to 75201",
+    "messages": [
+      {
+        "from": "Greg Housley <ghousley@freight.example.com>",
+        "date": "2026-09-22T12:55:00Z",
+        "body": "Sam, need this moved tomorrow. 77002 to 75201, dry van, load is 44k lbs. Let me know the rate.\n\nGreg Housley\n555-0114",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Houston, TX",
+          "d": "Dallas, TX",
+          "eq": "dry van",
+          "w": 44000,
+          "date": "2026-09-23"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s16-atlanta-nashville-asap",
+    "category": "asap",
+    "subject": "ASAP load - Atlanta to Nashville",
+    "messages": [
+      {
+        "from": "Wendy Cross <wcross@crossbuildingsupply.example.com>",
+        "date": "2026-09-21T21:05:00Z",
+        "body": "Sam,\n\nNeed this ASAP. Atlanta, GA to Nashville, TN, dry van, 41,000 lbs.\n\nCall me.\nWendy Cross\nCross Building Supply\n555-0115",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Atlanta, GA",
+          "d": "Nashville, TN",
+          "eq": "dry van",
+          "w": 41000,
+          "date": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "s17-denver-saltlake-asap",
+    "category": "asap",
+    "subject": "Need truck ASAP",
+    "messages": [
+      {
+        "from": "Otis Rand <orand@randsupplyco.example.com>",
+        "date": "2026-09-25T13:00:00Z",
+        "body": "Hey Sam,\n\nGot a load, Denver, CO to Salt Lake City, UT. 22,000 lbs. Need this ASAP, ready whenever you can get a truck, no firm date on our end.\n\nThanks,\nOtis Rand\nRand Supply Co\n555-0116",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Denver, CO",
+          "d": "Salt Lake City, UT",
+          "eq": null,
+          "w": 22000,
+          "date": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "s18-miami-orlando-ltl-8pallets",
+    "category": "pallets-ltl",
+    "subject": "LTL - 8 pallets Miami to Orlando",
+    "messages": [
+      {
+        "from": "Sofia Reyes <sreyes@sunbeltdist.example.com>",
+        "date": "2026-09-21T18:00:00Z",
+        "body": "Hi Sam,\n\n8 pallets, LTL, Miami, FL to Orlando, FL. No weight ticket yet. Need this Friday.\n\nThanks,\nSofia Reyes\nSunbelt Distributors\n555-0117",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Miami, FL",
+          "d": "Orlando, FL",
+          "eq": null,
+          "w": null,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s19-la-phoenix-reefer-pallets",
+    "category": "pallets-ltl",
+    "subject": "Reefer pallets - LA to Phoenix",
+    "messages": [
+      {
+        "from": "Carl Denton <cdenton@valleyfreshproduce.example.com>",
+        "date": "2026-09-23T14:45:00Z",
+        "body": "Sam,\n\n12 pallets at 550 lbs each, need reefer. Los Angeles, CA to Phoenix, AZ. Pickup 9/30.\n\nBest,\nCarl Denton\nValley Fresh Produce\n555-0118",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Los Angeles, CA",
+          "d": "Phoenix, AZ",
+          "eq": "reefer",
+          "w": 6600,
+          "date": "2026-09-30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s20-denver-boise-boxtruck-ltl",
+    "category": "pallets-ltl",
+    "subject": "Small LTL run",
+    "messages": [
+      {
+        "from": "Regina Voss <rvoss@highlinesupply.example.com>",
+        "date": "2026-09-23T20:20:00Z",
+        "body": "Hey Sam,\n\n6 pallets, box truck is fine, no weight given yet. Denver, CO to Boise, ID. Need this next Monday.\n\nThanks,\nRegina Voss\nHighline Supply\n555-0119",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Denver, CO",
+          "d": "Boise, ID",
+          "eq": null,
+          "w": null,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s21-hazmat-flammable-batonrouge-houston",
+    "category": "hazmat",
+    "subject": "Hazmat load - flammable liquid",
+    "messages": [
+      {
+        "from": "Louis Fontaine <lfontaine@bayouchemical.example.com>",
+        "date": "2026-09-27T22:00:00Z",
+        "body": "Sam,\n\nUN1993 flammable liquid, 20 drums, dry van (non-vented) required. Baton Rouge, LA to Houston, TX. Weight 36,000 lbs. Pickup Tuesday.\n\nDriver needs current hazmat endorsement.\n\nThanks,\nLouis Fontaine\nBayou Chemical Supply\n555-0120",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Baton Rouge, LA",
+          "d": "Houston, TX",
+          "eq": "dry van",
+          "w": 36000,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s22-hazmat-corrosive-tanker",
+    "category": "hazmat",
+    "subject": "Corrosive load - need tanker",
+    "messages": [
+      {
+        "from": "Tanya Ruiz <truiz@gulfchemicaltransport.example.com>",
+        "date": "2026-09-28T15:30:00Z",
+        "body": "Hi Sam,\n\nClass 8 corrosive material, tanker required. Corpus Christi, TX to New Orleans, LA. Weight 42,000 lbs. Pickup 9/28.\n\nMust have hazmat-certified driver.\n\nRegards,\nTanya Ruiz\nGulf Chemical Transport\n555-0121",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Corpus Christi, TX",
+          "d": "New Orleans, LA",
+          "eq": null,
+          "w": 42000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s23-html-table-dallas-atlanta",
+    "category": "html-ish",
+    "subject": "Quote request",
+    "messages": [
+      {
+        "from": "Priya Shah <pshah@shahfreight.example.com>",
+        "date": "2026-09-22T19:15:00Z",
+        "body": "<div>Hi Sam,</div><div>Need a quote:</div><table><tr><td>Origin:</td><td>Dallas, TX</td></tr><tr><td>Dest:</td><td>Atlanta, GA</td></tr><tr><td>Equip:</td><td>Dry Van</td></tr><tr><td>Weight:</td><td>40,000 lbs</td></tr><tr><td>Date:</td><td>09/28/2026</td></tr></table>&nbsp;<div>Thanks,</div><div>Priya Shah</div><div>Shah Freight Co</div><div>555-0122</div>",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 40000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s24-html-brtags-chicago-memphis",
+    "category": "html-ish",
+    "subject": "RE: quote",
+    "messages": [
+      {
+        "from": "Marcus Webb <mwebb@shipping.example.com>",
+        "date": "2026-09-24T16:05:00Z",
+        "body": "<div>Hi,</div><br><div>Chicago, IL&nbsp;to&nbsp;Memphis, TN</div><div>Reefer&nbsp;needed</div><div>Weight:&nbsp;22,500#</div><div>Date:&nbsp;10/1</div><br><div>Thanks</div><div>Marcus Webb</div><div>555-0123</div>",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Chicago, IL",
+          "d": "Memphis, TN",
+          "eq": "reefer",
+          "w": 22500,
+          "date": "2026-10-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s25-thread-dallas-atlanta-correction",
+    "category": "reply-thread",
+    "subject": "Quote - Dallas to Atlanta",
+    "messages": [
+      {
+        "from": "Erin Palmer <erin@palmergoods.example.com>",
+        "date": "2026-09-21T14:00:00Z",
+        "body": "Hi Sam,\n\nQuote needed: Dallas, TX to Atlanta, GA, dry van, roughly 38,000 lbs. Hoping to move this Friday.\n\nThanks,\nErin Palmer\nPalmer Goods\n555-0124",
+        "isMine": false
+      },
+      {
+        "from": "Sam Reyes <sam@northline.example.com>",
+        "date": "2026-09-21T16:30:00Z",
+        "body": "Hi Erin,\n\nCan you confirm the exact weight and whether Friday pickup is firm? Want to lock in the right truck.\n\nThanks,\nSam",
+        "isMine": true
+      },
+      {
+        "from": "Erin Palmer <erin@palmergoods.example.com>",
+        "date": "2026-09-22T13:15:00Z",
+        "body": "Hi Sam,\n\nActually the weight is 41,000 lbs and we need it Monday instead of Friday. Everything else stays the same.\n\nErin",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Atlanta, GA",
+          "eq": "dry van",
+          "w": 41000,
+          "date": "2026-09-28"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s26-thread-houston-memphis-reefer-correction",
+    "category": "reply-thread",
+    "subject": "Reefer quote - Houston to Memphis",
+    "messages": [
+      {
+        "from": "Devon Cole <dcole@colecoldstorage.example.com>",
+        "date": "2026-09-23T14:00:00Z",
+        "body": "Hi Sam,\n\nHouston, TX to Memphis, TN, reefer, weight around 42,000 lbs, pickup 9/26.\n\nThanks,\nDevon Cole\nCole Cold Storage\n555-0125",
+        "isMine": false
+      },
+      {
+        "from": "Sam Reyes <sam@northline.example.com>",
+        "date": "2026-09-23T15:15:00Z",
+        "body": "Hi Devon,\n\nGot it, working on rates now. What temp do you need?",
+        "isMine": true
+      },
+      {
+        "from": "Devon Cole <dcole@colecoldstorage.example.com>",
+        "date": "2026-09-24T13:30:00Z",
+        "body": "Sam,\n\nKeep it at 34F. Also weight came in at 44,500 lbs, and we actually need pickup pushed to 9/29.\n\nDevon",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Houston, TX",
+          "d": "Memphis, TN",
+          "eq": "reefer",
+          "w": 44500,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s27-thread-chicago-denver-saltlake-added-lane",
+    "category": "reply-thread",
+    "subject": "Chicago to Denver quote",
+    "messages": [
+      {
+        "from": "Maggie Sorenson <msorenson@midwestpaper.example.com>",
+        "date": "2026-09-23T15:00:00Z",
+        "body": "Hi Sam,\n\nNeed a quote for Chicago, IL to Denver, CO, dry van, 39,000 lbs, pickup 9/25.\n\nThanks,\nMaggie Sorenson\nMidwest Paper Co\n555-0126",
+        "isMine": false
+      },
+      {
+        "from": "Sam Reyes <sam@northline.example.com>",
+        "date": "2026-09-23T15:20:00Z",
+        "body": "Got it, working on it.",
+        "isMine": true
+      },
+      {
+        "from": "Maggie Sorenson <msorenson@midwestpaper.example.com>",
+        "date": "2026-09-24T14:05:00Z",
+        "body": "Also, separately we have a load from Denver, CO to Salt Lake City, UT, reefer, 27,000 lbs, same pickup date 9/25. Can you quote that too?\n\nMaggie",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Chicago, IL",
+          "d": "Denver, CO",
+          "eq": "dry van",
+          "w": 39000,
+          "date": "2026-09-25"
+        },
+        {
+          "o": "Denver, CO",
+          "d": "Salt Lake City, UT",
+          "eq": "reefer",
+          "w": 27000,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s28-thread-atlanta-charlotte-evening-correction",
+    "category": "reply-thread",
+    "subject": "Quote - Atlanta to Charlotte",
+    "messages": [
+      {
+        "from": "Brett Coleman <bcoleman@colemanfreight.example.com>",
+        "date": "2026-09-24T20:00:00Z",
+        "body": "Hi Sam,\n\nQuote needed: Atlanta, GA to Charlotte, NC, dry van, 36,000 lbs, pickup tomorrow.\n\nThanks,\nBrett Coleman\nColeman Freight Partners\n555-0127",
+        "isMine": false
+      },
+      {
+        "from": "Sam Reyes <sam@northline.example.com>",
+        "date": "2026-09-24T20:30:00Z",
+        "body": "On it, will have a number for you shortly.",
+        "isMine": true
+      },
+      {
+        "from": "Brett Coleman <bcoleman@colemanfreight.example.com>",
+        "date": "2026-09-25T02:40:00Z",
+        "body": "Sam - correction, make it Saturday pickup instead, everything else same.\n\nBrett",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Atlanta, GA",
+          "d": "Charlotte, NC",
+          "eq": "dry van",
+          "w": 36000,
+          "date": "2026-09-26"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s29-carrier-truck-available-dallas",
+    "category": "not-quote",
+    "subject": "Truck available Dallas",
+    "messages": [
+      {
+        "from": "Roy Odom <roy.odom@carrier.example.com>",
+        "date": "2026-09-22T13:00:00Z",
+        "body": "Hey,\n\nI've got a 53' dry van empty in Dallas, TX tomorrow, can run anywhere. Give me a call if you've got freight heading out.\n\nThanks,\nRoy Odom\nOwner Operator\n555-0128",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s30-invoice-4521",
+    "category": "not-quote",
+    "subject": "Invoice #4521",
+    "messages": [
+      {
+        "from": "Accounting Dept <ap@southwaycarriers.example.com>",
+        "date": "2026-09-23T14:00:00Z",
+        "body": "Hi Sam,\n\nAttached is invoice #4521 for the load delivered 9/15. Please remit payment within 30 days net terms.\n\nThanks,\nAccounting Dept\nSouthway Carriers\n555-0129",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s31-pod-request-8834",
+    "category": "not-quote",
+    "subject": "POD needed - load 8834",
+    "messages": [
+      {
+        "from": "Linda Marsh <lmarsh@shipperco.example.com>",
+        "date": "2026-09-24T15:00:00Z",
+        "body": "Sam,\n\nCan you send over the POD for load #8834 delivered last week? Need it for our files.\n\nThanks,\nLinda Marsh\nAP Department\n555-0130",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s32-rate-confirmation-signed",
+    "category": "not-quote",
+    "subject": "Rate confirmation - please sign",
+    "messages": [
+      {
+        "from": "Oscar Beltran <obeltran@apexdist.example.com>",
+        "date": "2026-09-25T16:00:00Z",
+        "body": "Hi Sam,\n\nPlease sign and return the attached rate confirmation for the Dallas-Atlanta load we agreed on, $1,850 all-in. Need it back before the driver picks up.\n\nThanks,\nOscar Beltran\nApex Distribution\n555-0131",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s33-loadboard-marketing-evening",
+    "category": "not-quote",
+    "subject": "Upgrade to DAT Premium today!",
+    "messages": [
+      {
+        "from": "DAT Solutions Team <news@dat-marketing.example.com>",
+        "date": "2026-09-26T03:05:00Z",
+        "body": "Don't miss out! Upgrade to DAT Premium and get 3x more loads posted daily, unlock advanced search filters, and priority support.\n\nClick here to upgrade now.\n\nDAT Solutions Team",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": false
+    }
+  },
+  {
+    "id": "s34-spanish-dallas-elpaso",
+    "category": "spanish",
+    "subject": "Quote necesitado - Dallas a El Paso",
+    "messages": [
+      {
+        "from": "Maria Elena Duarte <meduarte@duartetransportes.example.com>",
+        "date": "2026-09-21T15:45:00Z",
+        "body": "Hola Sam,\n\nNecesitamos un quote para mover una carga de Dallas, TX a El Paso, TX. Es dry van, aproximadamente 38,000 lbs. Pickup el viernes.\n\nGracias!\nMaria Elena Duarte\nDuarte Transportes\n555-0132",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "El Paso, TX",
+          "eq": "dry van",
+          "w": 38000,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s35-spanish-houston-chicago-reefer",
+    "category": "spanish",
+    "subject": "Carga refrigerada - Houston a Chicago",
+    "messages": [
+      {
+        "from": "Rafael Ortiz <rortiz@ortizcoldlogistics.example.com>",
+        "date": "2026-09-23T18:30:00Z",
+        "body": "Buenas Sam,\n\nTenemos una carga refrigerada (reefer) de Houston, TX a Chicago, IL. Peso total 26,500 lbs. Necesitamos recogida el proximo martes.\n\nSaludos,\nRafael Ortiz\nOrtiz Cold Logistics\n555-0133",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Houston, TX",
+          "d": "Chicago, IL",
+          "eq": "reefer",
+          "w": 26500,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s36-mmdd-dallas-houston",
+    "category": "mmdd-date",
+    "subject": "Quote - Dallas to Houston",
+    "messages": [
+      {
+        "from": "Kevin Frost <kfrost@frostbuildingsupply.example.com>",
+        "date": "2026-09-24T14:20:00Z",
+        "body": "Hi Sam,\n\nNeed dry van, Dallas, TX to Houston, TX, 40,000 lbs, pickup 10/2/26.\n\nThanks,\nKevin Frost\nFrost Building Supply\n555-0134",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Dallas, TX",
+          "d": "Houston, TX",
+          "eq": "dry van",
+          "w": 40000,
+          "date": "2026-10-02"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s37-mmdd-kc-stlouis-evening",
+    "category": "mmdd-date",
+    "subject": "KC to St Louis - flatbed",
+    "messages": [
+      {
+        "from": "Dana Whitfield <dwhitfield@whitfieldlogistics.example.com>",
+        "date": "2026-09-29T02:50:00Z",
+        "body": "Sam,\n\nFlatbed load, Kansas City, MO to St. Louis, MO, 24,000 lbs, pickup 9/29-9/30, flexible either day.\n\nThanks,\nDana Whitfield\nWhitfield Logistics\n555-0135",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Kansas City, MO",
+          "d": "St. Louis, MO",
+          "eq": "flatbed",
+          "w": 24000,
+          "date": "2026-09-29"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s38-subject-only-nashville-louisville",
+    "category": "subject-only",
+    "subject": "Quote needed: Nashville, TN to Louisville, KY, dry van, 35,000 lbs, pickup 9/30",
+    "messages": [
+      {
+        "from": "Kelly Marsh <kmarsh@freightco.example.com>",
+        "date": "2026-09-28T13:10:00Z",
+        "body": "Hi",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Nashville, TN",
+          "d": "Louisville, KY",
+          "eq": "dry van",
+          "w": 35000,
+          "date": "2026-09-30"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s39-messy-20tons-phoenix-albuquerque",
+    "category": "messy-weights",
+    "subject": "Load - Phoenix to Albuquerque",
+    "messages": [
+      {
+        "from": "Gary Nolan <gnolan@desertfreightco.example.com>",
+        "date": "2026-09-21T19:00:00Z",
+        "body": "Hey Sam,\n\nLoad is roughly 20 tons, maybe a bit more, hard to say exactly. Phoenix, AZ to Albuquerque, NM, dry van, pickup Wednesday.\n\nThanks,\nGary Nolan\nDesert Freight Co\n555-0136",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Phoenix, AZ",
+          "d": "Albuquerque, NM",
+          "eq": "dry van",
+          "w": 40000,
+          "date": "2026-09-23"
+        }
+      ]
+    }
+  },
+  {
+    "id": "s40-messy-18000gross-seattle-portland",
+    "category": "messy-weights",
+    "subject": "Flatbed - Seattle to Portland",
+    "messages": [
+      {
+        "from": "Holly Yamada <hyamada@pnwbuilders.example.com>",
+        "date": "2026-09-22T20:15:00Z",
+        "body": "Hi Sam,\n\n18,000 lbs gross, plus dunnage. Seattle, WA to Portland, OR, flatbed, pickup Friday.\n\nThanks,\nHolly Yamada\nPacific Northwest Builders\n555-0137",
+        "isMine": false
+      }
+    ],
+    "expected": {
+      "quote": true,
+      "lanes": [
+        {
+          "o": "Seattle, WA",
+          "d": "Portland, OR",
+          "eq": "flatbed",
+          "w": 18000,
+          "date": "2026-09-25"
+        }
+      ]
+    }
+  }
+]
