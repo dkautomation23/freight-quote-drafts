@@ -31,6 +31,13 @@ function buildPrompt(messages, subject) {
   var last = recent[recent.length - 1];
   var d = new Date(last.date);
   var weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()];
+  // Models are bad at weekday arithmetic ("Fri" from a Thursday), so hand them a calendar.
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var calendar = [];
+  for (var i = 0; i <= 14; i++) {
+    var c = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + i));
+    calendar.push(c.toISOString().slice(0, 10) + ' ' + days[c.getUTCDay()] + (i === 0 ? ' (sent)' : ''));
+  }
   var thread = recent.map(function (m) {
     return '--- ' + (m.isMine ? 'BROKER (us)' : 'CUSTOMER') + ' | ' + m.date + '\n' + stripQuoted(m.body).slice(0, 4000);
   }).join('\n\n');
@@ -47,7 +54,7 @@ function buildPrompt(messages, subject) {
     '- Fix misspelled US city names. States as 2-letter codes (TX, GA).',
     '- equipment: "dry van", "reefer" or "flatbed". "53 ft van" or "van" is "dry van". Temperature-controlled is "reefer".',
     '- weight_lbs: a number. "44k" = 44000. Tons are US tons (2000 lbs).',
-    '- pickup_date: YYYY-MM-DD. Resolve "Fri", "tomorrow", "next Thursday" from the date the message was sent.',
+    '- pickup_date: YYYY-MM-DD. Resolve "Fri", "tomorrow", "next Thursday" with the calendar below; do not count days yourself.',
     '  "Fri" means the nearest coming Friday; "next Thursday" means the Thursday of the following week.',
     '- Ignore addresses and phone numbers in signatures.',
     '- If a field is not stated, use null. Never guess.',
@@ -57,6 +64,8 @@ function buildPrompt(messages, subject) {
     '{"is_quote_request": true, "lanes": [{"origin_city": "Dallas", "origin_state": "TX",',
     ' "destination_city": "Atlanta", "destination_state": "GA", "equipment": "dry van",',
     ' "weight_lbs": 40000, "pickup_date": "2026-09-25", "notes": ""}]}',
+    '',
+    'Calendar: ' + calendar.join('; '),
     '',
     'Subject: ' + String(subject || '').slice(0, 300),
     'Thread (oldest first):',
@@ -175,10 +184,12 @@ function rateText(quote) {
   return '[RATE: no history for this lane]';
 }
 
+// First word made of letters only: "23 Dima" greets Dima, a bare address greets "there".
 function firstName(from) {
   var name = String(from || '').replace(/<.*>/, '').replace(/"/g, '').trim();
   if (!name || name.indexOf('@') >= 0) return '';
-  return titleCase(name.split(/\s+/)[0]);
+  var word = name.split(/\s+/).filter(function (w) { return /^[A-Za-zÀ-ɏЀ-ӿ'-]+$/.test(w); })[0];
+  return word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '';
 }
 
 // items: [{lane, quote}] from findRate. settings: {signerName, companyName}.

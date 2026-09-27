@@ -41,8 +41,8 @@ All 10 emails side by side, rendered locally from the recorded model answers
 
 | Claim | How | Result |
 |---|---|---|
-| The model reads all 11 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **11/11** on `gemini-flash-lite-latest` (27.09); the first 10 also 10/10 on `gemini-2.5-flash` and `gemini-flash-latest` — [`docs/live-eval.txt`](docs/live-eval.txt) |
-| Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 21 tests |
+| The model reads all 11 test emails correctly | `scripts/live-eval.js`: real Gemini API, the same prompt the script uses, compared field by field with answers written by hand before the first run | **11/11** on `claude-haiku-4-5` through the deployed proxy (27.09); Gemini 10/10 and 11/11 on earlier prompts — [`docs/live-eval.txt`](docs/live-eval.txt) |
+| Rates, questions and the reply text are right for each email | `npm test` on the recorded model answers | 22 tests |
 | Every quote email gets one draft in its own thread + `Quote ready`; the invoice gets `Not a quote`; nothing is sent | `npm test`: `Main.gs` runs against a fake Gmail and Sheets where any send, reply or forward throws | 15 tests |
 | A second run does not create duplicate drafts or call the model again | same | test |
 | Model down (HTTP 503) → no label, logged, retried 5 minutes later; an answer the script cannot read → 3 attempts, then left for a person | same | 3 tests |
@@ -52,7 +52,7 @@ All 10 emails side by side, rendered locally from the recorded model answers
 | The tests catch real mistakes | broke the equipment check, the "we wrote last" check and the duplicate-draft guard on purpose | each made tests fail |
 
 ```bash
-npm test          # 46 tests, no network, no Google account
+npm test          # 47 tests, no network, no Google account
 ```
 
 **Live run in Gmail (26.09.2026).** A new Gmail account, the three `.gs` files
@@ -68,6 +68,8 @@ What the live run found that the tests did not:
 - A real email with the whole request in the subject and "Hi" in the body was
   skipped as "not a quote": the prompt had only the body. The subject now goes into
   the prompt, and this case is test email 11.
+- Claude Haiku got the weekday wrong in 3 of 11 emails ("Fri" from a Thursday became
+  Saturday). The prompt now carries a 14-day calendar; after that 11/11.
 - The free tier answered 503 ("high demand") and 429 (daily limit) during the
   run. The script used to count these as failed attempts and give up on an email
   after 3; now a service error stops the run and the email waits for the next one.

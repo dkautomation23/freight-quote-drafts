@@ -1,1 +1,15 @@
-{"is_quote_request": true, "lanes": [{"origin_city": "Fresno", "origin_state": "CA", "destination_city": "Denver", "destination_state": "CO", "equipment": "reefer", "weight_lbs": 38000, "pickup_date": "2026-09-29", "notes": "Fresh produce, 34F"}]}
+{
+  "is_quote_request": true,
+  "lanes": [
+    {
+      "origin_city": "Fresno",
+      "origin_state": "CA",
+      "destination_city": "Denver",
+      "destination_state": "CO",
+      "equipment": "reefer",
+      "weight_lbs": 38000,
+      "pickup_date": "2026-09-29",
+      "notes": "must stay at 34F"
+    }
+  ]
+}
