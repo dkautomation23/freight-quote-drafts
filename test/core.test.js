@@ -160,3 +160,10 @@ test('"Saint Louis" and "St Louis" are the same city, in the draft and in the ra
 test('prompt: equipment only when the customer asked for it', () => {
   assert.match(gas.buildPrompt(gas.DEMO_EMAILS[0].messages, 'x'), /not mentioned, LTL, box truck.* is null/);
 });
+
+// Found by the stress test at temperature 0: "6 pallets, box truck is fine, need this next Monday" was read as not a quote.
+test('prompt: a load to move is a quote request even without "rate" or all the details', () => {
+  const p = gas.buildPrompt(gas.DEMO_EMAILS[0].messages, 'x');
+  assert.match(p, /even without\s+the words "rate" or "quote"/);
+  assert.match(p, /carriers offering their own trucks/);
+});

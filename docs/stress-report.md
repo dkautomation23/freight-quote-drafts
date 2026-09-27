@@ -1,6 +1,6 @@
 # Stress test: 40 broker-inbox emails through the live proxy
 
-Run 2026-09-27 11:51 UTC, model claude-haiku-4-5 via quote-proxy, time zone America/Chicago.
+Run 2026-09-27 13:34 UTC, model claude-haiku-4-5 via quote-proxy, time zone America/Chicago.
 Emails and expected answers written by a separate agent that never saw the prompt (`test/stress/emails.json`);
 raw model answers in `test/stress/answers.json`. Rerun: `node scripts/stress.js <token-file>`.
 
@@ -38,6 +38,7 @@ Lane fields are scored only for emails where the lane count matched.
 ## Misses
 
 None.
+
 ## History
 
 - **Run 1 (10:02 UTC): 36/40 (90%)**, below the >90% bar. Misses: `s17`, `s18`, `s20` — equipment
@@ -51,3 +52,8 @@ None.
   weeks ahead, against its own spec).
 - **Run 2 (11:51 UTC): 40/40.** Cost of both runs: 81 requests on Claude Haiku 4.5, about $0.10.
 - After run 2 the fixture signatures were moved to reserved ranges (`*.example.com`, 555-01xx phones) for the public repo; lane text unchanged.
+- **Temperature 0 (commit 956bf54):** the proxy had called Claude with the default temperature 1.0, and
+  `s20` flipped between runs. At 0 it failed 5 of 5: "6 pallets, box truck is fine, need this next
+  Monday" was read as not a quote, because the prompt said "asks for a price/rate/quote". The rule now
+  says a load to move is a quote request even without those words and with details missing.
+- **Run 3 (temperature 0, new rule): 40/40**, `s20` 3 of 3 on its own before the full run.
