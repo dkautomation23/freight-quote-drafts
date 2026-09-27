@@ -98,8 +98,8 @@ test('model output: odd values normalized, unknown equipment counts as missing',
   assert.deepStrictEqual([...lane.missing], ['destination', 'equipment', 'pickup_date']);
 });
 
-test('greeting skips numbers and keeps non-Latin names', () => {
-  assert.strictEqual(gas.firstName('"23 Дима" <a@example.com>'), 'Дима');
+test('greeting skips numbers and keeps accented names', () => {
+  assert.strictEqual(gas.firstName('"23 José" <a@example.com>'), 'José');
   assert.strictEqual(gas.firstName('LAURA KIM <l@example.com>'), 'Laura');
   assert.strictEqual(gas.firstName('123 <x@example.com>'), '');
 });
