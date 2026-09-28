@@ -119,6 +119,7 @@ function styleSheets(ss) {
   settings.getRange('C:C').setFontColor('#666666').setWrap(true);
   var log = ss.getSheetByName(SHEET_LOG);
   log.getRange('A:A').setNumberFormat('M/d/yyyy h:mm AM/PM');
+  log.getRange('B:I').setWrap(false); // one line per email, long errors are cut at the cell edge
   var result = log.getRange('E2:E');
   var color = function (prefix, bg) {
     return SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith(prefix).setBackground(bg).setRanges([result]).build();
@@ -210,7 +211,14 @@ function header(msg, name) {
 
 // The text/plain part if there is one, otherwise the HTML part without tags.
 function plainBody(payload) {
-  var decode = function (p) { return Utilities.newBlob(Utilities.base64DecodeWebSafe(p.body.data)).getDataAsString('UTF-8'); };
+  // The Apps Script Gmail service returns body.data as a byte array, not the base64url string the REST docs show
+  // ("Could not decode string", live run 28.09). Accept both; pad the string form, Gmail drops the "=".
+  var decode = function (p) {
+    var d = p.body.data;
+    if (typeof d !== 'string') return Utilities.newBlob(d).getDataAsString('UTF-8');
+    while (d.length % 4) d += '=';
+    return Utilities.newBlob(Utilities.base64DecodeWebSafe(d)).getDataAsString('UTF-8');
+  };
   var find = function (p, type) {
     if (p.mimeType === type && p.body && p.body.data) return p;
     for (var i = 0; i < (p.parts || []).length; i++) { var f = find(p.parts[i], type); if (f) return f; }
@@ -285,12 +293,12 @@ function processInbox() {
       var msgs = thread.messages.filter(function (m) { return (m.labelIds || []).indexOf('DRAFT') < 0; });
       var last = msgs[msgs.length - 1];
       if (!last || done[last.id]) return;
-      var plain = toPlainMessages(msgs, myEmail, settings.timeZone);
-      if (plain[plain.length - 1].isMine) return; // we wrote last: nothing to answer
+      if (header(last, 'From').toLowerCase().indexOf(myEmail) >= 0) return; // we wrote last: nothing to answer
       var subject = header(msgs[0], 'Subject');
 
       var row = [new Date(), last.id, header(last, 'From'), subject, '', '', '', '', ''];
-      try {
+      try { // reading the email is inside: one email Gmail cannot give us is logged, the rest still get drafts
+        var plain = toPlainMessages(msgs, myEmail, settings.timeZone);
         modelCalls++;
         var modelText = callModel(buildPrompt(plain, subject), settings);
         Utilities.sleep(7000); // stay under the free Gemini tier's per-minute limit
@@ -308,7 +316,7 @@ function processInbox() {
         }
       } catch (e) {
         if (row[4] !== 'draft') row[4] = 'error';
-        row[8] = String(e.message || e).slice(0, 300);
+        row[8] = String(e.message || e).replace(/\s+/g, ' ').slice(0, 300); // one line: a JSON error must not make a 5-line row
         if (isServiceError(row[8])) serviceDown = true; // one failed call per run, not twenty
       }
       logSheet.insertRowBefore(2); // newest on top: the broker sees today's emails first

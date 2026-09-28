@@ -131,7 +131,11 @@ function world(emails, recordedFor) {
       sleep: () => {},
       Charset: { UTF_8: 'UTF-8' },
       base64EncodeWebSafe: (text) => Buffer.from(text, 'utf8').toString('base64url'),
-      base64DecodeWebSafe: (data) => [...Buffer.from(data, 'base64url')],
+      // strict like the live service: only a padded string (28.09 a byte array crashed the live run)
+      base64DecodeWebSafe: (data) => {
+        if (typeof data !== 'string' || data.length % 4) throw new Error('Could not decode string.');
+        return [...Buffer.from(data, 'base64url')];
+      },
       newBlob: (bytes) => ({ getDataAsString: () => Buffer.from(bytes).toString('utf8') }),
       formatDate: (d, tz, pattern) => { assert.strictEqual(pattern, LOCAL_PATTERN); return formatLocal(d, tz); } },
     UrlFetchApp: {
@@ -374,6 +378,26 @@ test('HTML-only email: the text is read without tags', () => {
   w.gas.processInbox();
   assert.match(w.calls.prompts[0], /Dallas TX to Atlanta GA\s*\ndry van, 40,000 lbs/);
   assert.doesNotMatch(w.calls.prompts[0], /<div>|&nbsp;/);
+});
+
+test('body as a byte array (how the Apps Script Gmail service returns it) or unpadded base64url: both read', () => {
+  const w = world(loadGas().DEMO_EMAILS.slice(0, 2), recorded);
+  w.gas.setup();
+  const p0 = w.threads[0].messages[0].payload, p1 = w.threads[1].messages[0].payload;
+  p0.body.data = [...Buffer.from(p0.body.data, 'base64url')];
+  assert.notStrictEqual(p1.body.data.length % 4, 0, 'fixture is unpadded');
+  w.gas.processInbox();
+  assert.deepStrictEqual(w.log().map((r) => r[4]).sort(), ['draft', 'draft']);
+});
+
+test('one email Gmail cannot give us: logged as error, the others still get drafts', () => {
+  const w = world(loadGas().DEMO_EMAILS.slice(0, 3), recorded);
+  w.gas.setup();
+  w.threads[1].messages[0].payload.body.data = { broken: true };
+  w.gas.processInbox();
+  const res = w.log().map((r) => r[4] + (r[8] ? ': ' + r[8] : ''));
+  assert.strictEqual(res.filter((r) => r === 'draft').length, 2, res.join(' | '));
+  assert.ok(res.some((r) => /^error/.test(r)), res.join(' | '));
 });
 
 test('permissions: no GmailApp (full mail access), only the narrow scopes in the manifest', () => {
